@@ -1,0 +1,67 @@
+import SwiftUI
+import TaskPersistence
+
+struct BoardColumnView: View {
+    let column: BoardColumn
+    let tasks: [TaskItem]
+    let onDropTaskID: (UUID) -> Void
+    let onAddTask: () -> Void
+    let onRename: () -> Void
+    let onArchive: () -> Void
+    @State private var isTargeted = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(column.name)
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Color(hex: 0x565A52))
+                Spacer()
+                Text("\(tasks.count)")
+                    .font(.system(size: 10))
+                    .foregroundStyle(TaskDesignTokens.quiet)
+            }
+            .frame(minHeight: 28)
+            .contextMenu {
+                Button("重命名", action: onRename)
+                if !column.isCompletionColumn {
+                    Button("归档列", role: .destructive, action: onArchive)
+                }
+            }
+
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 7) {
+                    ForEach(tasks) { task in
+                        BoardTaskCard(task: task)
+                            .draggable(task.id.uuidString)
+                    }
+                }
+            }
+
+            Button(action: onAddTask) {
+                Text("＋ 添加任务")
+                    .font(.system(size: 10))
+                    .foregroundStyle(TaskDesignTokens.quiet)
+                    .frame(maxWidth: .infinity, minHeight: 34)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            .foregroundStyle(Color(hex: 0xD2D3CB))
+                    )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .frame(minWidth: 220, idealWidth: 248, maxWidth: 280, alignment: .top)
+        .background(TaskDesignTokens.canvas.opacity(0.001))
+        .overlay(
+            RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius)
+                .stroke(isTargeted ? TaskDesignTokens.acid : Color.clear, lineWidth: 2)
+        )
+        .dropDestination(for: String.self, action: { values, _ in
+            guard let raw = values.first, let id = UUID(uuidString: raw) else { return false }
+            onDropTaskID(id)
+            return true
+        }, isTargeted: { isTargeted = $0 })
+    }
+}
