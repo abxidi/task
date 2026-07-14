@@ -67,7 +67,8 @@ struct TaskListScreen: View {
                                     renamingColumn = lane
                                 },
                                 onArchive: {},
-                                onOpenTask: { editingTask = $0 }
+                                onOpenTask: { editingTask = $0 },
+                                onToggleTask: toggle
                             )
                         }
                     }
@@ -177,5 +178,9 @@ struct TaskListScreen: View {
     private func move(_ taskID: UUID, to lane: BoardColumn) {
         guard let task = allTasks.first(where: { $0.id == taskID }) else { return }
         try? BoardWorkflowService(context: modelContext).move(task, to: lane)
+    }
+
+    private func toggle(_ task: TaskItem) {
+        try? TaskRepository(context: modelContext).setCompleted(task, isCompleted: !task.isCompleted)
     }
 }

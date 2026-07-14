@@ -4,10 +4,22 @@ import TaskPersistence
 
 struct BoardTaskCard: View {
     let task: TaskItem
+    var onToggleCompletion: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
+                Button {
+                    onToggleCompletion?()
+                } label: {
+                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                        .font(.system(size: 15))
+                        .foregroundStyle(task.isCompleted ? TaskDesignTokens.success : TaskDesignTokens.quiet)
+                }
+                .buttonStyle(.plain)
+                .disabled(onToggleCompletion == nil)
+                .accessibilityLabel(task.isCompleted ? "标记为未完成" : "标记为已完成")
+
                 PriorityMarkerView(
                     coordinate: .init(uncheckedUrgency: task.urgency, importance: task.importance),
                     title: task.title,

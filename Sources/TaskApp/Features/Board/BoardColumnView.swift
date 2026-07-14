@@ -9,6 +9,7 @@ struct BoardColumnView: View {
     let onRename: () -> Void
     let onArchive: () -> Void
     var onOpenTask: (TaskItem) -> Void = { _ in }
+    var onToggleTask: (TaskItem) -> Void = { _ in }
     @State private var isTargeted = false
 
     var body: some View {
@@ -45,7 +46,7 @@ struct BoardColumnView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 7) {
                     ForEach(tasks) { task in
-                        BoardTaskCard(task: task)
+                        BoardTaskCard(task: task) { onToggleTask(task) }
                             .draggable(task.id.uuidString)
                             .onTapGesture { onOpenTask(task) }
                     }
