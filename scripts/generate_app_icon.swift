@@ -53,19 +53,19 @@ private func makeIcon(size: Int) throws -> Data {
     NSBezierPath(rect: NSRect(x: 0, y: 0, width: dimension, height: dimension)).fill()
 
     let topBar = NSRect(
-        x: 224 * scale,
-        y: 650 * scale,
-        width: 576 * scale,
-        height: max(3, 112 * scale)
+        x: 210 * scale,
+        y: 628 * scale,
+        width: 604 * scale,
+        height: max(3, 150 * scale)
     )
     let stem = NSRect(
-        x: 440 * scale,
-        y: 250 * scale,
-        width: max(3, 144 * scale),
-        height: 460 * scale
+        x: 417 * scale,
+        y: 238 * scale,
+        width: max(3, 190 * scale),
+        height: 480 * scale
     )
-    roundedRect(topBar, radius: max(1, 24 * scale), color: acid)
-    roundedRect(stem, radius: max(1, 24 * scale), color: acid)
+    roundedRect(topBar, radius: max(1, 30 * scale), color: acid)
+    roundedRect(stem, radius: max(1, 30 * scale), color: acid)
 
     context.flushGraphics()
     NSGraphicsContext.restoreGraphicsState()
