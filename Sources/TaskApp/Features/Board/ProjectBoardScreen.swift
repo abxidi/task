@@ -155,8 +155,12 @@ struct ProjectBoardScreen: View {
             .frame(width: 360)
             .background(TaskDesignTokens.panel)
         }
-        .sheet(item: $creatingInColumn) { _ in
-            TaskEditorSheet(mode: .create)
+        .overlay {
+            if creatingInColumn != nil {
+                TaskEditorOverlay(mode: .create) {
+                    creatingInColumn = nil
+                }
+            }
         }
         .sheet(item: $renamingColumn) { column in
             VStack(alignment: .leading, spacing: 16) {

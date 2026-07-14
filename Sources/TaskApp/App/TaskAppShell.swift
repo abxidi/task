@@ -54,8 +54,12 @@ struct TaskAppShell: View {
         }
         .frame(minWidth: 980, minHeight: 680)
         .background(TaskDesignTokens.canvas)
-        .sheet(isPresented: $isCreatingTask) {
-            TaskEditorSheet(mode: .create)
+        .overlay {
+            if isCreatingTask {
+                TaskEditorOverlay(mode: .create) {
+                    isCreatingTask = false
+                }
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .taskCreateRequested)) { _ in
             isCreatingTask = true

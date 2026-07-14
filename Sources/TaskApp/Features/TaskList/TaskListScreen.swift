@@ -85,11 +85,16 @@ struct TaskListScreen: View {
         .onChange(of: initialScope) { _, newValue in
             if let newValue { scope = newValue }
         }
-        .sheet(item: $editingTask) { task in
-            TaskEditorSheet(mode: .edit(task))
-        }
-        .sheet(item: $creatingInColumn) { lane in
-            TaskEditorSheet(mode: .createInColumn(lane.id))
+        .overlay {
+            if let task = editingTask {
+                TaskEditorOverlay(mode: .edit(task)) {
+                    editingTask = nil
+                }
+            } else if let lane = creatingInColumn {
+                TaskEditorOverlay(mode: .createInColumn(lane.id)) {
+                    creatingInColumn = nil
+                }
+            }
         }
         .sheet(item: $renamingColumn) { lane in
             VStack(alignment: .leading, spacing: 16) {

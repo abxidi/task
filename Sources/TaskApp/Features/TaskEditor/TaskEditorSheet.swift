@@ -11,8 +11,16 @@ struct TaskEditorSheet: View {
     @FocusState private var titleFocused: Bool
     @FocusState private var descriptionFocused: Bool
     @State private var reminderWarning: String?
+    private let onClose: (() -> Void)?
+    private let outsideDismissToken: UUID?
 
-    init(mode: TaskEditorMode) {
+    init(
+        mode: TaskEditorMode,
+        onClose: (() -> Void)? = nil,
+        outsideDismissToken: UUID? = nil
+    ) {
+        self.onClose = onClose
+        self.outsideDismissToken = outsideDismissToken
         switch mode {
         case .create:
             _model = StateObject(wrappedValue: TaskEditorModel(draft: TaskDraft(title: "")))
@@ -145,6 +153,9 @@ struct TaskEditorSheet: View {
         .frame(minWidth: 760, idealWidth: 860, minHeight: 560)
         .background(TaskDesignTokens.panel)
         .onAppear { titleFocused = true }
+        .onChange(of: outsideDismissToken) { _, token in
+            if token != nil { attemptDismiss() }
+        }
         .alert("无法保存", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
@@ -154,7 +165,7 @@ struct TaskEditorSheet: View {
             Text(model.errorMessage ?? "")
         }
         .confirmationDialog("放弃未保存的修改？", isPresented: $model.showDiscardConfirmation) {
-            Button("放弃", role: .destructive) { dismiss() }
+            Button("放弃", role: .destructive) { finishDismiss() }
             Button("继续编辑", role: .cancel) {}
         }
     }
@@ -174,7 +185,7 @@ struct TaskEditorSheet: View {
                 saved = try repository.saveNewTask(model.draft)
             }
             Task { await syncReminder(for: saved) }
-            dismiss()
+            finishDismiss()
         } catch TaskDraftError.emptyTitle {
             model.errorMessage = "请输入任务标题"
             titleFocused = true
@@ -186,6 +197,14 @@ struct TaskEditorSheet: View {
     private func attemptDismiss() {
         if model.isDirty {
             model.showDiscardConfirmation = true
+        } else {
+            finishDismiss()
+        }
+    }
+
+    private func finishDismiss() {
+        if let onClose {
+            onClose()
         } else {
             dismiss()
         }

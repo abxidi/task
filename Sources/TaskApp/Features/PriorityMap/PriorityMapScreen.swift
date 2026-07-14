@@ -124,8 +124,12 @@ struct PriorityMapScreen: View {
                 }
             }
         }
-        .sheet(item: $editingTask) { task in
-            TaskEditorSheet(mode: .edit(task))
+        .overlay {
+            if let task = editingTask {
+                TaskEditorOverlay(mode: .edit(task)) {
+                    editingTask = nil
+                }
+            }
         }
         .onAppear {
             if selection == nil {
