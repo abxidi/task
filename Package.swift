@@ -25,5 +25,6 @@ let package = Package(
         .testTarget(name: "TaskPersistenceTests", dependencies: ["TaskPersistence", "TaskDomain", "TaskAI"]),
         .testTarget(name: "TaskAITests", dependencies: ["TaskAI", "TaskDomain"]),
         .testTarget(name: "TaskNotificationsTests", dependencies: ["TaskNotifications", "TaskDomain"]),
+        .testTarget(name: "TaskAppTests", dependencies: ["TaskApp"]),
     ]
 )

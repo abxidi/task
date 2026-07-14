@@ -88,15 +88,18 @@ struct TaskEditorSheet: View {
             // Body
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
+                    VStack(spacing: 0) {
                         TextField("任务标题", text: $model.draft.title)
                             .textFieldStyle(.plain)
                             .font(TaskDesignTokens.sheetTitleFont)
                             .foregroundStyle(TaskDesignTokens.ink)
                             .focused($titleFocused)
-                            .padding(.bottom, 14)
-                            .overlay(alignment: .bottom) {
-                                Rectangle().fill(TaskDesignTokens.line).frame(height: 1)
-                            }
+                            .frame(minHeight: TaskEditorTitleMetrics.minimumFieldHeight)
+                        Rectangle()
+                            .fill(TaskDesignTokens.line)
+                            .frame(height: 1)
+                    }
+                    .padding(.bottom, 14)
 
                         HStack {
                             Text("任务描述")
@@ -224,4 +227,8 @@ struct TaskEditorSheet: View {
             reminderWarning = "任务已保存，但提醒未成功注册"
         }
     }
+}
+
+enum TaskEditorTitleMetrics {
+    static let minimumFieldHeight: CGFloat = 44
 }
