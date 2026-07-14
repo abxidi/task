@@ -37,6 +37,7 @@ struct PriorityMapView: View {
     let tasks: [TaskItem]
     @Binding var selection: TaskItem?
     let onMove: (TaskItem, PriorityCoordinate) -> Void
+    var onInteraction: () -> Void = {}
     var showSelectionLabel: Bool = true
 
     var body: some View {
@@ -102,7 +103,10 @@ struct PriorityMapView: View {
                     }
                     .position(point(for: coordinate, in: plot))
                     .gesture(dragGesture(for: task, plot: plot))
-                    .onTapGesture { selection = task }
+                    .onTapGesture {
+                        selection = task
+                        onInteraction()
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -147,6 +151,7 @@ struct PriorityMapView: View {
     private func dragGesture(for task: TaskItem, plot: CGRect) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
+                onInteraction()
                 selection = task
                 let x = (value.location.x - plot.minX) / max(plot.width, 1)
                 let y = (plot.maxY - value.location.y) / max(plot.height, 1)

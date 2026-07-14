@@ -37,6 +37,7 @@ struct PriorityMapScreen: View {
     @StateObject private var saver = PriorityMoveSaver()
     @State private var editingTask: TaskItem?
     @State private var filter: MapFilter = .all
+    @State private var keyboardFocusRequest = 0
 
     private enum MapFilter: String, CaseIterable {
         case all = "全部"
@@ -100,10 +101,20 @@ struct PriorityMapScreen: View {
                                 TaskChromeButton(title: "新建任务", systemImage: "plus", style: .primary, action: onCreateTask)
                             }
                         } else {
-                            PriorityMapView(tasks: filteredTasks, selection: $selection, onMove: move)
-                                .onMoveCommand(perform: handleMoveCommand)
-                                .focusable()
+                            PriorityMapView(
+                                tasks: filteredTasks,
+                                selection: $selection,
+                                onMove: move,
+                                onInteraction: requestKeyboardFocus
+                            )
                         }
+
+                        PriorityMapKeyboardFocusView(
+                            focusRequest: keyboardFocusRequest,
+                            onMove: handleMoveCommand
+                        )
+                        .frame(width: 1, height: 1)
+                        .allowsHitTesting(false)
                     }
                     .frame(width: side, height: side)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -347,6 +358,10 @@ struct PriorityMapScreen: View {
         saver.schedule {
             try? modelContext.save()
         }
+    }
+
+    private func requestKeyboardFocus() {
+        keyboardFocusRequest += 1
     }
 
     private func handleMoveCommand(_ direction: MoveCommandDirection) {

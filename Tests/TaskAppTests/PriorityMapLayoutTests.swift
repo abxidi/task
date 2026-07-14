@@ -3,6 +3,10 @@ import XCTest
 @testable import TaskApp
 
 final class PriorityMapLayoutTests: XCTestCase {
+    func testPriorityMapKeyboardFocusHasNoSystemFocusRing() {
+        XCTAssertFalse(PriorityMapFocusStyle.usesSystemFocusRing)
+    }
+
     func testMapSideUsesRemainingHeightAndCapsLargeCanvases() {
         XCTAssertEqual(PriorityMapScreenLayout.mapSide(for: CGSize(width: 900, height: 380)), 380)
         XCTAssertEqual(PriorityMapScreenLayout.mapSide(for: CGSize(width: 900, height: 900)), 620)
