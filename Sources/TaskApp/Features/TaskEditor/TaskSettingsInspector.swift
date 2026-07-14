@@ -154,8 +154,8 @@ struct PriorityCoordinateEditor: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let side = min(proxy.size.width, proxy.size.height)
-            let plot = CGRect(origin: .zero, size: .init(width: side, height: side))
+            let coordinateSquare = PriorityMapLayout.coordinateSquare(in: proxy.size)
+            let plot = coordinateSquare
                 .insetBy(dx: TaskDesignTokens.plotInset, dy: TaskDesignTokens.plotInset)
 
             ZStack {
@@ -163,15 +163,20 @@ struct PriorityCoordinateEditor: View {
                     .fill(TaskDesignTokens.raised)
                     .overlay(RoundedRectangle(cornerRadius: 7).stroke(TaskDesignTokens.lineStrong, lineWidth: 1))
 
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(TaskDesignTokens.lineStrong, lineWidth: 1)
+                    .frame(width: coordinateSquare.width, height: coordinateSquare.height)
+                    .position(x: coordinateSquare.midX, y: coordinateSquare.midY)
+
                 // zone labels
                 zone("重点规划", TaskDesignTokens.zonePlanFG, TaskDesignTokens.zonePlanBG)
-                    .position(x: plot.minX + 34, y: plot.minY + 12)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .plan, in: coordinateSquare))
                 zone("立即处理", TaskDesignTokens.zoneActFG, TaskDesignTokens.zoneActBG)
-                    .position(x: plot.maxX - 34, y: plot.minY + 12)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .actNow, in: coordinateSquare))
                 zone("稍后处理", TaskDesignTokens.zoneDeferFG, TaskDesignTokens.zoneDeferBG)
-                    .position(x: plot.minX + 34, y: plot.maxY - 12)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .defer, in: coordinateSquare))
                 zone("适当委派", TaskDesignTokens.zoneDelegateFG, TaskDesignTokens.zoneDelegateBG)
-                    .position(x: plot.maxX - 34, y: plot.maxY - 12)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .delegate, in: coordinateSquare))
 
                 Path { path in
                     path.move(to: CGPoint(x: plot.midX, y: plot.minY))
@@ -198,7 +203,6 @@ struct PriorityCoordinateEditor: View {
                             }
                     )
             }
-            .frame(width: side, height: side)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }

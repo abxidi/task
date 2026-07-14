@@ -2,6 +2,37 @@ import SwiftUI
 import TaskDomain
 import TaskPersistence
 
+enum PriorityMapLayout {
+    static let zoneLabelBand: CGFloat = 30
+
+    static func coordinateSquare(in canvasSize: CGSize) -> CGRect {
+        let availableHeight = max(0, canvasSize.height - zoneLabelBand * 2)
+        let side = min(canvasSize.width, availableHeight)
+        return CGRect(
+            x: (canvasSize.width - side) / 2,
+            y: zoneLabelBand + (availableHeight - side) / 2,
+            width: side,
+            height: side
+        )
+    }
+
+    static func zoneLabelPosition(for quadrant: PriorityQuadrant, in square: CGRect) -> CGPoint {
+        let horizontalInset: CGFloat = 36
+        switch quadrant {
+        case .plan:
+            return CGPoint(x: square.minX + horizontalInset, y: square.minY - zoneLabelBand / 2)
+        case .actNow:
+            return CGPoint(x: square.maxX - horizontalInset, y: square.minY - zoneLabelBand / 2)
+        case .defer:
+            return CGPoint(x: square.minX + horizontalInset, y: square.maxY + zoneLabelBand / 2)
+        case .delegate:
+            return CGPoint(x: square.maxX - horizontalInset, y: square.maxY + zoneLabelBand / 2)
+        case .undecided:
+            return CGPoint(x: square.midX, y: square.midY)
+        }
+    }
+}
+
 struct PriorityMapView: View {
     let tasks: [TaskItem]
     @Binding var selection: TaskItem?
@@ -10,8 +41,8 @@ struct PriorityMapView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let side = min(proxy.size.width, proxy.size.height)
-            let plot = CGRect(origin: .zero, size: .init(width: side, height: side))
+            let coordinateSquare = PriorityMapLayout.coordinateSquare(in: proxy.size)
+            let plot = coordinateSquare
                 .insetBy(dx: TaskDesignTokens.plotInset, dy: TaskDesignTokens.plotInset)
 
             ZStack {
@@ -21,6 +52,11 @@ struct PriorityMapView: View {
                         RoundedRectangle(cornerRadius: 7)
                             .stroke(TaskDesignTokens.lineStrong, lineWidth: 1)
                     )
+
+                RoundedRectangle(cornerRadius: 7)
+                    .stroke(TaskDesignTokens.lineStrong, lineWidth: 1)
+                    .frame(width: coordinateSquare.width, height: coordinateSquare.height)
+                    .position(x: coordinateSquare.midX, y: coordinateSquare.midY)
 
                 PriorityGridShape(plot: plot)
                     .stroke(Color(hex: 0xE9EAE4), lineWidth: 0.5)
@@ -35,24 +71,24 @@ struct PriorityMapView: View {
                 .stroke(Color(hex: 0x858980), lineWidth: 1)
 
                 zoneLabel("重点规划", color: TaskDesignTokens.zonePlanFG, bg: TaskDesignTokens.zonePlanBG)
-                    .position(x: plot.minX + 36, y: plot.minY + 14)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .plan, in: coordinateSquare))
                 zoneLabel("立即处理", color: TaskDesignTokens.zoneActFG, bg: TaskDesignTokens.zoneActBG)
-                    .position(x: plot.maxX - 36, y: plot.minY + 14)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .actNow, in: coordinateSquare))
                 zoneLabel("稍后处理", color: TaskDesignTokens.zoneDeferFG, bg: TaskDesignTokens.zoneDeferBG)
-                    .position(x: plot.minX + 36, y: plot.maxY - 14)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .defer, in: coordinateSquare))
                 zoneLabel("适当委派", color: TaskDesignTokens.zoneDelegateFG, bg: TaskDesignTokens.zoneDelegateBG)
-                    .position(x: plot.maxX - 36, y: plot.maxY - 14)
+                    .position(PriorityMapLayout.zoneLabelPosition(for: .delegate, in: coordinateSquare))
 
                 Text("紧急度 −3 → +3")
                     .font(.system(size: 8, weight: .medium))
                     .foregroundStyle(TaskDesignTokens.quiet)
-                    .position(x: plot.midX, y: side - 8)
+                    .position(x: coordinateSquare.midX, y: proxy.size.height - 6)
 
                 Text("重要度 −3 → +3")
                     .font(.system(size: 8, weight: .medium))
                     .foregroundStyle(TaskDesignTokens.quiet)
                     .rotationEffect(.degrees(-90))
-                    .position(x: 10, y: plot.midY)
+                    .position(x: max(8, coordinateSquare.minX - 14), y: coordinateSquare.midY)
 
                 ForEach(tasks) { task in
                     let coordinate = PriorityCoordinate(uncheckedUrgency: task.urgency, importance: task.importance)
@@ -69,11 +105,8 @@ struct PriorityMapView: View {
                     .onTapGesture { selection = task }
                 }
             }
-            .frame(width: side, height: side)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .aspectRatio(1, contentMode: .fit)
-        .frame(minWidth: 360, minHeight: 360)
     }
 
     private func zoneLabel(_ text: String, color: Color, bg: Color) -> some View {

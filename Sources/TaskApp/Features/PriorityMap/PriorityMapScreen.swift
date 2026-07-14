@@ -17,6 +17,14 @@ final class PriorityMoveSaver: ObservableObject {
     }
 }
 
+enum PriorityMapScreenLayout {
+    static let maximumMapSide: CGFloat = 620
+
+    static func mapSide(for availableSize: CGSize) -> CGFloat {
+        min(availableSize.width, availableSize.height, maximumMapSide)
+    }
+}
+
 struct PriorityMapScreen: View {
     var isAIConfigured: Bool = false
     var onCreateTask: () -> Void = {}
@@ -38,50 +46,52 @@ struct PriorityMapScreen: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    PageHeader(
-                        eyebrow: Date.now.formatted(.dateTime.year().month().day().weekday(.wide)),
-                        title: "把精力留给重要的事",
-                        primaryActionTitle: "新任务",
-                        primaryAction: onCreateTask,
-                        secondaryActionTitle: "筛选",
-                        secondaryAction: {}
-                    )
-                    .padding(.bottom, 20)
+            VStack(alignment: .leading, spacing: 0) {
+                PageHeader(
+                    eyebrow: Date.now.formatted(.dateTime.year().month().day().weekday(.wide)),
+                    title: "把精力留给重要的事",
+                    primaryActionTitle: "新任务",
+                    primaryAction: onCreateTask,
+                    secondaryActionTitle: "筛选",
+                    secondaryAction: {}
+                )
+                .padding(.bottom, 20)
 
-                    mapMetrics
-                        .padding(.bottom, 15)
+                mapMetrics
+                    .padding(.bottom, 15)
 
-                    HStack {
-                        HStack(spacing: 2) {
-                            ForEach(MapFilter.allCases, id: \.self) { item in
-                                Button {
-                                    filter = item
-                                } label: {
-                                    Text(item.rawValue)
-                                        .font(.system(size: 9, weight: filter == item ? .bold : .regular))
-                                        .foregroundStyle(filter == item ? TaskDesignTokens.ink : TaskDesignTokens.quiet)
-                                        .padding(.horizontal, 9)
-                                        .padding(.vertical, 5)
-                                        .background(filter == item ? TaskDesignTokens.raised : Color.clear, in: RoundedRectangle(cornerRadius: 4))
-                                }
-                                .buttonStyle(.plain)
+                HStack {
+                    HStack(spacing: 2) {
+                        ForEach(MapFilter.allCases, id: \.self) { item in
+                            Button {
+                                filter = item
+                            } label: {
+                                Text(item.rawValue)
+                                    .font(.system(size: 9, weight: filter == item ? .bold : .regular))
+                                    .foregroundStyle(filter == item ? TaskDesignTokens.ink : TaskDesignTokens.quiet)
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 5)
+                                    .background(filter == item ? TaskDesignTokens.raised : Color.clear, in: RoundedRectangle(cornerRadius: 4))
                             }
+                            .buttonStyle(.plain)
                         }
-                        .padding(3)
-                        .background(TaskDesignTokens.sidebar, in: RoundedRectangle(cornerRadius: 6))
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
-
-                        Spacer()
-                        Text("颜色 = 紧急度 · 数字 = 重要度")
-                            .font(.system(size: 9))
-                            .foregroundStyle(TaskDesignTokens.quiet)
                     }
-                    .padding(.bottom, 8)
+                    .padding(3)
+                    .background(TaskDesignTokens.sidebar, in: RoundedRectangle(cornerRadius: 6))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
 
-                    if filteredTasks.isEmpty {
-                        ZStack {
+                    Spacer()
+                    Text("颜色 = 紧急度 · 数字 = 重要度")
+                        .font(.system(size: 9))
+                        .foregroundStyle(TaskDesignTokens.quiet)
+                }
+                .padding(.bottom, 8)
+
+                GeometryReader { proxy in
+                    let side = PriorityMapScreenLayout.mapSide(for: proxy.size)
+
+                    ZStack {
+                        if filteredTasks.isEmpty {
                             PriorityMapView(tasks: [], selection: $selection, onMove: move)
                             VStack(spacing: 12) {
                                 Text("还没有任务")
@@ -89,20 +99,19 @@ struct PriorityMapScreen: View {
                                     .foregroundStyle(TaskDesignTokens.muted)
                                 TaskChromeButton(title: "新建任务", systemImage: "plus", style: .primary, action: onCreateTask)
                             }
+                        } else {
+                            PriorityMapView(tasks: filteredTasks, selection: $selection, onMove: move)
+                                .onMoveCommand(perform: handleMoveCommand)
+                                .focusable()
                         }
-                        .frame(maxWidth: 620)
-                        .frame(maxWidth: .infinity)
-                    } else {
-                        PriorityMapView(tasks: filteredTasks, selection: $selection, onMove: move)
-                            .onMoveCommand(perform: handleMoveCommand)
-                            .focusable()
-                            .frame(maxWidth: 620)
-                            .frame(maxWidth: .infinity)
                     }
+                    .frame(width: side, height: side)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(.horizontal, 26)
-                .padding(.vertical, 25)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .padding(.horizontal, 26)
+            .padding(.vertical, 25)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(TaskDesignTokens.canvas)
 
