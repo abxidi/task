@@ -84,11 +84,7 @@ struct AppSidebar: View {
 
     private var brand: some View {
         HStack(spacing: 9) {
-            Text("T")
-                .font(.system(size: 14, weight: .bold, design: .serif))
-                .foregroundStyle(TaskDesignTokens.acid)
-                .frame(width: 28, height: 28)
-                .background(TaskDesignTokens.ink, in: RoundedRectangle(cornerRadius: 7))
+            TaskLogoMark()
             Text("Task")
                 .font(.system(size: 15, weight: .heavy))
                 .foregroundStyle(TaskDesignTokens.ink)
