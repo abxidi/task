@@ -37,6 +37,7 @@ final class TaskEditorModel: ObservableObject {
             estimatedMinutes: item.estimatedMinutes,
             isCompleted: item.isCompleted,
             subtasks: item.subtasks.sorted { $0.order < $1.order }.map(\.title),
+            subtaskCompletion: item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted),
             projectID: item.project?.id,
             boardColumnID: item.boardColumn?.id,
             tagNames: item.tags.map(\.name)
@@ -46,5 +47,6 @@ final class TaskEditorModel: ObservableObject {
 
 enum TaskEditorMode {
     case create
+    case createInColumn(UUID)
     case edit(TaskItem)
 }

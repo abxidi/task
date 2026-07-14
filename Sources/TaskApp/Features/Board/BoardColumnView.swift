@@ -8,6 +8,7 @@ struct BoardColumnView: View {
     let onAddTask: () -> Void
     let onRename: () -> Void
     let onArchive: () -> Void
+    var onOpenTask: (TaskItem) -> Void = { _ in }
     @State private var isTargeted = false
 
     var body: some View {
@@ -20,6 +21,18 @@ struct BoardColumnView: View {
                 Text("\(tasks.count)")
                     .font(.system(size: 10))
                     .foregroundStyle(TaskDesignTokens.quiet)
+                Menu {
+                    Button("重命名", action: onRename)
+                    if !column.isCompletionColumn {
+                        Button("归档列", role: .destructive, action: onArchive)
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(TaskDesignTokens.quiet)
+                        .frame(width: 24, height: 24)
+                }
+                .menuStyle(.borderlessButton)
             }
             .frame(minHeight: 28)
             .contextMenu {
@@ -34,6 +47,7 @@ struct BoardColumnView: View {
                     ForEach(tasks) { task in
                         BoardTaskCard(task: task)
                             .draggable(task.id.uuidString)
+                            .onTapGesture { onOpenTask(task) }
                     }
                 }
             }

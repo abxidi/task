@@ -10,7 +10,7 @@ public final class BoardWorkflowService {
     }
 
     public func move(_ task: TaskItem, to column: BoardColumn, now: Date = .now) throws {
-        guard let projectID = task.project?.id, projectID == column.project?.id else {
+        guard task.project?.id == column.project?.id else {
             throw BoardWorkflowError.projectMismatch
         }
         if column.isCompletionColumn {

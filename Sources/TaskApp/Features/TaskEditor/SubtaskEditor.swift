@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SubtaskEditor: View {
     @Binding var items: [String]
+    @Binding var completion: [Bool]
     @State private var newTitle = ""
     @FocusState private var isNewFocused: Bool
 
@@ -17,29 +18,36 @@ struct SubtaskEditor: View {
                     .foregroundStyle(TaskDesignTokens.quiet)
             }
 
-            ForEach(Array(items.enumerated()), id: \.offset) { index, _ in
-                HStack(spacing: 9) {
-                    Image(systemName: "square")
-                        .font(.system(size: 12))
-                        .foregroundStyle(TaskDesignTokens.quiet)
-                    TextField("子任务", text: binding(for: index))
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 11))
-                        .foregroundStyle(Color(hex: 0x50544C))
-                    Button {
-                        items.remove(at: index)
-                    } label: {
-                        Image(systemName: "line.3.horizontal")
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color(hex: 0xB0B3AA))
+            if !items.isEmpty {
+                List {
+                    ForEach(Array(items.enumerated()), id: \.offset) { index, _ in
+                        HStack(spacing: 9) {
+                            Button {
+                                completion[index].toggle()
+                            } label: {
+                                Image(systemName: completion[index] ? "checkmark.square.fill" : "square")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(completion[index] ? TaskDesignTokens.success : TaskDesignTokens.quiet)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(completion[index] ? "标记为未完成" : "标记为已完成")
+
+                            TextField("子任务", text: binding(for: index))
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color(hex: 0x50544C))
+                                .strikethrough(completion[index])
+                        }
+                        .frame(minHeight: 37)
+                        .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 0))
+                        .listRowSeparator(.visible)
+                        .listRowBackground(Color.clear)
                     }
-                    .buttonStyle(.plain)
-                    .help("删除子任务")
+                    .onMove(perform: move)
                 }
-                .frame(minHeight: 38)
-                .overlay(alignment: .bottom) {
-                    Rectangle().fill(Color(hex: 0xE5E5DF)).frame(height: 1)
-                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .frame(height: CGFloat(items.count) * 38)
             }
 
             HStack(spacing: 8) {
@@ -79,7 +87,13 @@ struct SubtaskEditor: View {
             return
         }
         items.append(trimmed)
+        completion.append(false)
         newTitle = ""
         isNewFocused = true
+    }
+
+    private func move(from source: IndexSet, to destination: Int) {
+        items.move(fromOffsets: source, toOffset: destination)
+        completion.move(fromOffsets: source, toOffset: destination)
     }
 }

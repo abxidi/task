@@ -13,7 +13,12 @@ final class TaskDraftTests: XCTestCase {
     }
 
     func testSubtasksPreserveOrder() throws {
-        let draft = TaskDraft(title: "Plan", subtasks: ["Second", "First"])
+        let draft = TaskDraft(
+            title: "Plan",
+            subtasks: ["Second", "First"],
+            subtaskCompletion: [true, false]
+        )
         XCTAssertEqual(try draft.validated().subtasks, ["Second", "First"])
+        XCTAssertEqual(try draft.validated().subtaskCompletion, [true, false])
     }
 }

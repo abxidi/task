@@ -12,12 +12,14 @@ final class TaskRepositoryEditingTests: XCTestCase {
             title: "Launch",
             details: "Context",
             coordinate: .init(uncheckedUrgency: 3, importance: 3),
-            subtasks: ["Price", "Channels"]
+            subtasks: ["Price", "Channels"],
+            subtaskCompletion: [true, false]
         )
         let item = try repository.saveNewTask(draft)
         XCTAssertEqual(item.details, "Context")
         XCTAssertEqual(item.urgency, 3)
         XCTAssertEqual(item.importance, 3)
         XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["Price", "Channels"])
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted), [true, false])
     }
 }

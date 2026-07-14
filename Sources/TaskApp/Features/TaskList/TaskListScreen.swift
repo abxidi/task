@@ -29,86 +29,114 @@ struct TaskListScreen: View {
 
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.createdAt) private var allTasks: [TaskItem]
-    @State private var scope: TaskListScope = .inbox
-    @State private var quickTitle = ""
+    @Query(sort: \BoardColumn.order) private var boardColumns: [BoardColumn]
+    @State private var scope: TaskListScope = .all
     @State private var editingTask: TaskItem?
+    @State private var creatingInColumn: BoardColumn?
+    @State private var renamingColumn: BoardColumn?
+    @State private var renameText = ""
 
     var body: some View {
         VStack(spacing: 0) {
             PageHeader(
-                eyebrow: "任务列表 · \(scope.title)",
-                title: scope.title,
+                eyebrow: "任务列表 · (scope.title)",
+                title: "任务列表",
                 primaryActionTitle: "新任务",
-                primaryAction: onCreateTask
+                primaryAction: { creatingInColumn = lanes.first }
             )
             .padding(.horizontal, 26)
             .padding(.top, 25)
             .padding(.bottom, 16)
 
-            HStack(spacing: 2) {
-                ForEach(TaskListScope.allCases) { item in
-                    Button {
-                        scope = item
-                    } label: {
-                        Text(item.title)
-                            .font(.system(size: 10, weight: scope == item ? .bold : .regular))
-                            .foregroundStyle(scope == item ? TaskDesignTokens.ink : TaskDesignTokens.quiet)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(scope == item ? TaskDesignTokens.raised : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+            scopePicker
+
+            if lanes.isEmpty {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 12) {
+                        ForEach(lanes, id: \.id) { lane in
+                            BoardColumnView(
+                                column: lane,
+                                tasks: tasks(in: lane),
+                                onDropTaskID: { move($0, to: lane) },
+                                onAddTask: { creatingInColumn = lane },
+                                onRename: {
+                                    renameText = lane.name
+                                    renamingColumn = lane
+                                },
+                                onArchive: {},
+                                onOpenTask: { editingTask = $0 }
+                            )
+                        }
                     }
-                    .buttonStyle(.plain)
+                    .padding(.horizontal, 26)
+                    .padding(.bottom, 24)
                 }
-                Spacer()
             }
-            .padding(3)
-            .background(TaskDesignTokens.sidebar, in: RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
-            .padding(.horizontal, 26)
-            .padding(.bottom, 12)
-
-            HStack(spacing: 8) {
-                TextField("输入标题，回车快速创建", text: $quickTitle)
-                    .textFieldStyle(.plain)
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 6))
-                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
-                    .onSubmit(createQuickTask)
-                TaskChromeButton(title: "创建", style: .primary, action: createQuickTask)
-            }
-            .padding(.horizontal, 26)
-            .padding(.bottom, 12)
-
-            List(filteredTasks, id: \.id) { item in
-                TaskListRow(item: item) {
-                    toggle(item)
-                } onOpen: {
-                    editingTask = item
-                }
-                .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .padding(.horizontal, 26)
-            .background(TaskDesignTokens.canvas)
         }
         .background(TaskDesignTokens.canvas)
         .onAppear {
-            if let initialScope {
-                scope = initialScope
-            }
+            _ = try? TaskListLaneRepository(context: modelContext).defaultLanes()
+            if let initialScope { scope = initialScope }
         }
         .onChange(of: initialScope) { _, newValue in
-            if let newValue {
-                scope = newValue
-            }
+            if let newValue { scope = newValue }
         }
         .sheet(item: $editingTask) { task in
             TaskEditorSheet(mode: .edit(task))
         }
+        .sheet(item: $creatingInColumn) { lane in
+            TaskEditorSheet(mode: .createInColumn(lane.id))
+        }
+        .sheet(item: $renamingColumn) { lane in
+            VStack(alignment: .leading, spacing: 16) {
+                Text("重命名泳道")
+                    .font(TaskDesignTokens.pageTitleFont)
+                TextField("泳道名称", text: $renameText)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    TaskChromeButton(title: "取消") { renamingColumn = nil }
+                    Spacer()
+                    TaskChromeButton(title: "保存", style: .primary) {
+                        try? ProjectRepository(context: modelContext).renameColumn(lane, to: renameText)
+                        renamingColumn = nil
+                    }
+                }
+            }
+            .padding(24)
+            .frame(width: 360)
+            .background(TaskDesignTokens.panel)
+        }
+    }
+
+    private var scopePicker: some View {
+        HStack(spacing: 2) {
+            ForEach(TaskListScope.allCases) { item in
+                Button {
+                    scope = item
+                } label: {
+                    Text(item.title)
+                        .font(.system(size: 10, weight: scope == item ? .bold : .regular))
+                        .foregroundStyle(scope == item ? TaskDesignTokens.ink : TaskDesignTokens.quiet)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(scope == item ? TaskDesignTokens.raised : Color.clear, in: RoundedRectangle(cornerRadius: 4))
+                }
+                .buttonStyle(.plain)
+            }
+            Spacer()
+        }
+        .padding(3)
+        .background(TaskDesignTokens.sidebar, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
+        .padding(.horizontal, 26)
+        .padding(.bottom, 16)
+    }
+
+    private var lanes: [BoardColumn] {
+        boardColumns.filter { $0.project == nil }.sorted { $0.order < $1.order }
     }
 
     private var filteredTasks: [TaskItem] {
@@ -123,19 +151,13 @@ struct TaskListScreen: View {
         case .inbox:
             filtered = allTasks.filter { !$0.isCompleted && $0.project == nil }
         case .today:
-            filtered = allTasks.filter { item in
-                guard !item.isCompleted, let due = item.dueAt else { return false }
-                return due >= startOfToday && due < endOfToday
-            }
+            filtered = allTasks.filter { !$0.isCompleted && ($0.dueAt.map { $0 >= startOfToday && $0 < endOfToday } ?? false) }
         case .nextSevenDays:
-            filtered = allTasks.filter { item in
-                guard !item.isCompleted, let due = item.dueAt else { return false }
-                return due >= startOfToday && due < endOfWeek
-            }
+            filtered = allTasks.filter { !$0.isCompleted && ($0.dueAt.map { $0 >= startOfToday && $0 < endOfWeek } ?? false) }
         case .all:
-            filtered = allTasks.filter { !$0.isCompleted }
+            filtered = allTasks.filter { $0.project == nil }
         case .completed:
-            filtered = allTasks.filter(\.isCompleted)
+            filtered = allTasks.filter { $0.isCompleted && $0.project == nil }
         }
 
         return filtered.sorted {
@@ -146,65 +168,14 @@ struct TaskListScreen: View {
         }
     }
 
-    private func createQuickTask() {
-        let repository = TaskRepository(context: modelContext)
-        do {
-            try repository.createTask(title: quickTitle)
-            quickTitle = ""
-        } catch {
-            // Keep field for correction.
+    private func tasks(in lane: BoardColumn) -> [TaskItem] {
+        filteredTasks.filter { task in
+            task.boardColumn?.id == lane.id || (lane.order == 0 && task.boardColumn == nil)
         }
     }
 
-    private func toggle(_ item: TaskItem) {
-        let repository = TaskRepository(context: modelContext)
-        try? repository.setCompleted(item, isCompleted: !item.isCompleted)
-    }
-}
-
-private struct TaskListRow: View {
-    let item: TaskItem
-    let onToggle: () -> Void
-    let onOpen: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Button(action: onToggle) {
-                Image(systemName: item.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 16))
-                    .foregroundStyle(item.isCompleted ? TaskDesignTokens.success : TaskDesignTokens.quiet)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(item.isCompleted ? "标记为未完成" : "标记为已完成")
-
-            PriorityMarkerView(
-                coordinate: .init(uncheckedUrgency: item.urgency, importance: item.importance),
-                title: item.title,
-                isSelected: false
-            )
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(item.title)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(TaskDesignTokens.ink)
-                    .strikethrough(item.isCompleted)
-                HStack(spacing: 8) {
-                    if let dueAt = item.dueAt {
-                        Text(dueAt, style: .date)
-                    }
-                    if let project = item.project {
-                        Text(project.name)
-                    }
-                }
-                .font(.system(size: 10))
-                .foregroundStyle(TaskDesignTokens.quiet)
-            }
-            Spacer()
-        }
-        .padding(12)
-        .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onOpen)
+    private func move(_ taskID: UUID, to lane: BoardColumn) {
+        guard let task = allTasks.first(where: { $0.id == taskID }) else { return }
+        try? BoardWorkflowService(context: modelContext).move(task, to: lane)
     }
 }

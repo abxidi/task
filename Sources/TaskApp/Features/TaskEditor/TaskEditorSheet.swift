@@ -9,12 +9,15 @@ struct TaskEditorSheet: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var model: TaskEditorModel
     @FocusState private var titleFocused: Bool
+    @FocusState private var descriptionFocused: Bool
     @State private var reminderWarning: String?
 
     init(mode: TaskEditorMode) {
         switch mode {
         case .create:
             _model = StateObject(wrappedValue: TaskEditorModel(draft: TaskDraft(title: "")))
+        case .createInColumn(let columnID):
+            _model = StateObject(wrappedValue: TaskEditorModel(draft: TaskDraft(title: "", boardColumnID: columnID)))
         case .edit(let item):
             _model = StateObject(wrappedValue: TaskEditorModel(draft: TaskEditorModel.draft(from: item), existing: item))
         }
@@ -51,6 +54,10 @@ struct TaskEditorSheet: View {
                 .buttonStyle(.plain)
                 .keyboardShortcut("p", modifiers: [.command, .shift])
                 .help("打开任务设置")
+                .popover(isPresented: $model.isSettingsPresented, arrowEdge: .top) {
+                    TaskSettingsInspector(draft: $model.draft)
+                        .frame(width: 420, height: 640)
+                }
 
                 Button {
                     attemptDismiss()
@@ -71,9 +78,8 @@ struct TaskEditorSheet: View {
             }
 
             // Body
-            HStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
                         TextField("任务标题", text: $model.draft.title)
                             .textFieldStyle(.plain)
                             .font(TaskDesignTokens.sheetTitleFont)
@@ -98,30 +104,24 @@ struct TaskEditorSheet: View {
                             .font(.system(size: 12))
                             .foregroundStyle(TaskDesignTokens.muted)
                             .scrollContentBackground(.hidden)
-                            .padding(14)
-                            .frame(minHeight: 170)
+                            .focused($descriptionFocused)
+                            .padding(isDescriptionExpanded ? 14 : 8)
+                            .frame(height: isDescriptionExpanded ? 170 : 40)
                             .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 6))
                             .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
                             .padding(.top, 9)
 
-                        SubtaskEditor(items: $model.draft.subtasks)
+                        SubtaskEditor(
+                            items: $model.draft.subtasks,
+                            completion: $model.draft.subtaskCompletion
+                        )
                             .padding(.top, 24)
-                    }
-                    .padding(.horizontal, 34)
-                    .padding(.vertical, 28)
-                }
-                .frame(maxWidth: .infinity)
-                .background(TaskDesignTokens.panel)
-
-                if model.isSettingsPresented {
-                    TaskSettingsInspector(draft: $model.draft)
-                        .frame(width: 340)
-                        .background(TaskDesignTokens.settingsPanel)
-                        .overlay(alignment: .leading) {
-                            Rectangle().fill(TaskDesignTokens.line).frame(width: 1)
-                        }
                 }
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 34)
+            .padding(.vertical, 28)
+            .background(TaskDesignTokens.panel)
 
             // Footer
             HStack {
@@ -157,6 +157,10 @@ struct TaskEditorSheet: View {
             Button("放弃", role: .destructive) { dismiss() }
             Button("继续编辑", role: .cancel) {}
         }
+    }
+
+    private var isDescriptionExpanded: Bool {
+        descriptionFocused || !model.draft.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func save() {

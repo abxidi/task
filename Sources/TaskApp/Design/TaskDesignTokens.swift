@@ -52,15 +52,15 @@ enum TaskDesignTokens {
     static let metricHeight: CGFloat = 66
 
     static var pageTitleFont: Font {
-        .system(size: 26, weight: .semibold, design: .serif)
+        .system(size: 26, weight: .semibold)
     }
 
     static var sheetTitleFont: Font {
-        .system(size: 30, weight: .semibold, design: .serif)
+        .system(size: 30, weight: .semibold)
     }
 
     static var inspectorTitleFont: Font {
-        .system(size: 18, weight: .semibold, design: .serif)
+        .system(size: 18, weight: .semibold)
     }
 }
 

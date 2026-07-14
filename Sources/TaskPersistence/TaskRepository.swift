@@ -90,7 +90,9 @@ public final class TaskRepository {
             context.delete(subtask)
         }
         item.subtasks = draft.subtasks.enumerated().map { index, title in
-            Subtask(title: title, order: index)
+            let subtask = Subtask(title: title, order: index)
+            subtask.isCompleted = index < draft.subtaskCompletion.count ? draft.subtaskCompletion[index] : false
+            return subtask
         }
 
         if let projectID = draft.projectID {
