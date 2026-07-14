@@ -50,6 +50,12 @@ public final class TaskRepository {
                 }
                 item.boardColumn = completion
             }
+        } else if isCompleted,
+                  let completion = try context.fetch(FetchDescriptor<BoardColumn>()).first(where: { $0.project == nil && $0.isCompletionColumn }) {
+            if let current = item.boardColumn, !current.isCompletionColumn {
+                item.previousBoardColumnID = current.id
+            }
+            item.boardColumn = completion
         } else if !isCompleted, let project = item.project {
             if let previousID = item.previousBoardColumnID,
                let previous = project.boardColumns.first(where: { $0.id == previousID }) {
@@ -58,6 +64,18 @@ public final class TaskRepository {
                 item.boardColumn = first
             } else {
                 item.boardColumn = nil
+            }
+            item.previousBoardColumnID = nil
+        } else if !isCompleted {
+            let localLanes = try context.fetch(FetchDescriptor<BoardColumn>())
+                .filter { $0.project == nil }
+            if let previousID = item.previousBoardColumnID,
+               let previous = localLanes.first(where: { $0.id == previousID }) {
+                item.boardColumn = previous
+            } else {
+                item.boardColumn = localLanes
+                    .filter { !$0.isCompletionColumn }
+                    .min(by: { $0.order < $1.order })
             }
             item.previousBoardColumnID = nil
         }
