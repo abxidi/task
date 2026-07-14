@@ -66,7 +66,7 @@ struct TaskSettingsInspector: View {
 
                 settingRow("所属项目") {
                     Picker("", selection: $draft.projectID) {
-                        Text("收件箱").tag(Optional<UUID>.none)
+                        Text("无项目").tag(Optional<UUID>.none)
                         ForEach(projects, id: \.id) { project in
                             Text(project.name).tag(Optional(project.id))
                         }

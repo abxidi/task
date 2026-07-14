@@ -26,7 +26,7 @@ struct AppSidebar: View {
             sectionLabel("快捷筛选")
             filterRow(.today, title: "今天", symbol: "sun.max", count: todayCount)
             filterRow(.nextSevenDays, title: "未来 7 天", symbol: "calendar")
-            filterRow(.inbox, title: "收件箱", symbol: "tray", count: inboxCount)
+            filterRow(.all, title: "全部任务", symbol: "checklist", count: allTaskCount)
 
             if !projects.isEmpty {
                 sectionLabel("项目")
@@ -151,7 +151,7 @@ struct AppSidebar: View {
     }
 
     private var openCount: Int { allTasks.filter { !$0.isCompleted }.count }
-    private var inboxCount: Int { allTasks.filter { !$0.isCompleted && $0.project == nil }.count }
+    private var allTaskCount: Int { allTasks.filter { $0.project == nil }.count }
     private var todayCount: Int {
         let calendar = Calendar.current
         let start = calendar.startOfDay(for: .now)

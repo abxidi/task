@@ -534,7 +534,7 @@ git commit -m "feat: add square draggable priority map"
 
 - [ ] **Step 1: Add query scopes**
 
-Create an enum for `inbox`, `today`, `nextSevenDays`, `all`, and `completed`. Each scope builds a `FetchDescriptor<TaskItem>` with explicit sort descriptors. Priority sort that cannot be expressed by SwiftData runs after fetch using `TaskSort.priority`.
+Create an enum for `today`, `nextSevenDays`, `all`, and `completed`. Each scope builds a `FetchDescriptor<TaskItem>` with explicit sort descriptors. Priority sort that cannot be expressed by SwiftData runs after fetch using `TaskSort.priority`.
 
 - [ ] **Step 2: Implement list rows**
 
@@ -554,7 +554,7 @@ Button {
 
 - [ ] **Step 3: Add quick creation**
 
-At the top of inbox and current filters, provide a one-line field. `Return` calls `TaskRepository.createTask(title:)`, then clears the field. No date/project/priority dialog appears.
+At the top of all tasks and current filters, provide a one-line field. `Return` calls `TaskRepository.createTask(title:)`, then clears the field. No date/project/priority dialog appears.
 
 - [ ] **Step 4: Wire Command-N**
 
@@ -653,7 +653,7 @@ Do not wrap these rows in nested cards. Use native form rows and dividers.
 - `Command-Return` validates and saves.
 - `Escape` closes only when unchanged; otherwise show confirmation.
 - Saving an empty title leaves the sheet open and focuses title.
-- Saving without opening settings preserves `(0,0)`, no date, inbox, unfinished, no tags.
+- Saving without opening settings preserves `(0,0)`, no date, no project, unfinished, no tags.
 
 - [ ] **Step 6: Verify and commit**
 

@@ -4,7 +4,6 @@ import TaskDomain
 import TaskPersistence
 
 enum TaskListScope: String, CaseIterable, Identifiable {
-    case inbox
     case today
     case nextSevenDays
     case all
@@ -14,7 +13,6 @@ enum TaskListScope: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .inbox: "收件箱"
         case .today: "今天"
         case .nextSevenDays: "未来 7 天"
         case .all: "全部任务"
@@ -154,8 +152,6 @@ struct TaskListScreen: View {
 
         let filtered: [TaskItem]
         switch scope {
-        case .inbox:
-            filtered = allTasks.filter { !$0.isCompleted && $0.project == nil }
         case .today:
             filtered = allTasks.filter { !$0.isCompleted && ($0.dueAt.map { $0 >= startOfToday && $0 < endOfToday } ?? false) }
         case .nextSevenDays:

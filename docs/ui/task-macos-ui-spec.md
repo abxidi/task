@@ -195,7 +195,7 @@ let importance = Int((normalizedY * 6).rounded()) - 3
 2. 任务列表。
 3. 项目看板。
 4. 数据洞察。
-5. 快捷筛选：今天、未来 7 天、收件箱。
+5. 快捷筛选：今天、未来 7 天、全部任务。
 6. 项目列表。
 7. 本机工作区和设置。
 
@@ -208,7 +208,7 @@ let importance = Int((normalizedY * 6).rounded()) - 3
 数据洞察: chart.xyaxis.line
 今天: sun.max
 未来 7 天: calendar
-收件箱: tray
+全部任务: checklist
 设置: gearshape
 ```
 
