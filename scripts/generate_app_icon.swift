@@ -52,39 +52,20 @@ private func makeIcon(size: Int) throws -> Data {
     graphite.setFill()
     NSBezierPath(rect: NSRect(x: 0, y: 0, width: dimension, height: dimension)).fill()
 
-    let nodeX = 220 * scale
-    let nodeSize = max(3, 78 * scale)
-    let nodeRadius = max(1, 13 * scale)
-    let rowCenters = [704, 512, 320].map { CGFloat($0) * scale }
-
-    for centerY in rowCenters {
-        roundedRect(
-            NSRect(x: nodeX, y: centerY - nodeSize / 2, width: nodeSize, height: nodeSize),
-            radius: nodeRadius,
-            color: acid
-        )
-    }
-
-    let lineX = 362 * scale
-    let lineWidth = 440 * scale
-    let lineHeight = max(2, 48 * scale)
-    for centerY in rowCenters.dropFirst() {
-        roundedRect(
-            NSRect(x: lineX, y: centerY - lineHeight / 2, width: lineWidth, height: lineHeight),
-            radius: lineHeight / 2,
-            color: acid
-        )
-    }
-
-    let check = NSBezierPath()
-    check.move(to: NSPoint(x: 232 * scale, y: 710 * scale))
-    check.line(to: NSPoint(x: 258 * scale, y: 684 * scale))
-    check.line(to: NSPoint(x: 307 * scale, y: 742 * scale))
-    check.lineCapStyle = .round
-    check.lineJoinStyle = .round
-    check.lineWidth = max(1.5, 30 * scale)
-    graphite.setStroke()
-    check.stroke()
+    let topBar = NSRect(
+        x: 224 * scale,
+        y: 650 * scale,
+        width: 576 * scale,
+        height: max(3, 112 * scale)
+    )
+    let stem = NSRect(
+        x: 440 * scale,
+        y: 250 * scale,
+        width: max(3, 144 * scale),
+        height: 460 * scale
+    )
+    roundedRect(topBar, radius: max(1, 24 * scale), color: acid)
+    roundedRect(stem, radius: max(1, 24 * scale), color: acid)
 
     context.flushGraphics()
     NSGraphicsContext.restoreGraphicsState()
