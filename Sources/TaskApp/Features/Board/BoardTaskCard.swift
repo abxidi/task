@@ -20,17 +20,12 @@ struct BoardTaskCard: View {
                 .disabled(onToggleCompletion == nil)
                 .accessibilityLabel(task.isCompleted ? "标记为未完成" : "标记为已完成")
 
-                PriorityMarkerView(
-                    coordinate: .init(uncheckedUrgency: task.urgency, importance: task.importance),
-                    title: task.title,
-                    isSelected: false,
-                    isCompact: true
-                )
                 Text(task.title)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color(hex: 0x3D413A))
                     .lineLimit(2)
                     .strikethrough(task.isCompleted)
+                    .padding(.trailing, TaskCardLayout.titleTrailingReservation)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             HStack(spacing: 5) {
@@ -51,6 +46,15 @@ struct BoardTaskCard: View {
             RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius)
                 .stroke(TaskDesignTokens.line, lineWidth: 1)
         )
+        .overlay(alignment: .topTrailing) {
+            PriorityMarkerView(
+                coordinate: .init(uncheckedUrgency: task.urgency, importance: task.importance),
+                title: task.title,
+                isSelected: false,
+                isCompact: true
+            )
+            .padding(TaskCardLayout.priorityBadgeInset)
+        }
         .opacity(task.isCompleted ? 0.56 : 1)
     }
 
@@ -62,4 +66,9 @@ struct BoardTaskCard: View {
             .padding(.vertical, 3)
             .background(Color(hex: 0xEFEFE9), in: RoundedRectangle(cornerRadius: 3))
     }
+}
+
+enum TaskCardLayout {
+    static let priorityBadgeInset: CGFloat = 10
+    static let titleTrailingReservation: CGFloat = 32
 }
