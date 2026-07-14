@@ -39,6 +39,7 @@ struct PriorityMapView: View {
     let onMove: (TaskItem, PriorityCoordinate) -> Void
     var onInteraction: () -> Void = {}
     var showSelectionLabel: Bool = true
+    @State private var expandedStack: PriorityMapTaskStack?
 
     var body: some View {
         GeometryReader { proxy in
@@ -91,22 +92,8 @@ struct PriorityMapView: View {
                     .rotationEffect(.degrees(-90))
                     .position(x: max(8, coordinateSquare.minX - 14), y: coordinateSquare.midY)
 
-                ForEach(tasks) { task in
-                    let coordinate = PriorityCoordinate(uncheckedUrgency: task.urgency, importance: task.importance)
-                    let isSelected = selection?.id == task.id
-                    ZStack {
-                        PriorityMarkerView(coordinate: coordinate, title: task.title, isSelected: isSelected)
-                        if isSelected && showSelectionLabel {
-                            selectionLabel(for: task, coordinate: coordinate)
-                                .offset(x: coordinate.urgency >= 2 ? -96 : 96, y: -28)
-                        }
-                    }
-                    .position(point(for: coordinate, in: plot))
-                    .gesture(dragGesture(for: task, plot: plot))
-                    .onTapGesture {
-                        selection = task
-                        onInteraction()
-                    }
+                ForEach(PriorityMapTaskStacking.stacks(for: tasks)) { stack in
+                    stackMarker(stack, plot: plot)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -121,6 +108,60 @@ struct PriorityMapView: View {
             .padding(.vertical, 5)
             .background(bg, in: RoundedRectangle(cornerRadius: 4))
             .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
+    private func stackMarker(_ stack: PriorityMapTaskStack, plot: CGRect) -> some View {
+        let selectedTask = stack.tasks.first { $0.id == selection?.id }
+
+        if stack.isStacked {
+            Button {
+                expandedStack = stack
+                onInteraction()
+            } label: {
+                ZStack {
+                    PriorityStackMarkerView(
+                        coordinate: stack.coordinate,
+                        count: stack.tasks.count,
+                        isSelected: selectedTask != nil
+                    )
+                    if let selectedTask, showSelectionLabel {
+                        selectionLabel(for: selectedTask, coordinate: stack.coordinate)
+                            .offset(x: stack.coordinate.urgency >= 2 ? -96 : 96, y: -30)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .position(point(for: stack.coordinate, in: plot))
+            .popover(
+                isPresented: Binding(
+                    get: { expandedStack?.id == stack.id },
+                    set: { if !$0 { expandedStack = nil } }
+                ),
+                arrowEdge: .bottom
+            ) {
+                PriorityMapStackPopover(tasks: stack.tasks) { task in
+                    selection = task
+                    expandedStack = nil
+                    onInteraction()
+                }
+            }
+        } else if let task = stack.tasks.first {
+            let isSelected = selection?.id == task.id
+            ZStack {
+                PriorityMarkerView(coordinate: stack.coordinate, title: task.title, isSelected: isSelected)
+                if isSelected && showSelectionLabel {
+                    selectionLabel(for: task, coordinate: stack.coordinate)
+                        .offset(x: stack.coordinate.urgency >= 2 ? -96 : 96, y: -28)
+                }
+            }
+            .position(point(for: stack.coordinate, in: plot))
+            .gesture(dragGesture(for: task, plot: plot))
+            .onTapGesture {
+                selection = task
+                onInteraction()
+            }
+        }
     }
 
     private func selectionLabel(for task: TaskItem, coordinate: PriorityCoordinate) -> some View {
@@ -164,6 +205,54 @@ struct PriorityMapView: View {
 
     private func signed(_ value: Int) -> String {
         value > 0 ? "+\(value)" : "\(value)"
+    }
+}
+
+private struct PriorityMapStackPopover: View {
+    let tasks: [TaskItem]
+    let onSelect: (TaskItem) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("此点位的任务")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(TaskDesignTokens.ink)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+
+            Divider()
+
+            ForEach(tasks) { task in
+                Button {
+                    onSelect(task)
+                } label: {
+                    HStack(spacing: 9) {
+                        PriorityMarkerView(
+                            coordinate: PriorityCoordinate(uncheckedUrgency: task.urgency, importance: task.importance),
+                            title: task.title,
+                            isSelected: false,
+                            isCompact: true
+                        )
+                        Text(task.title)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(TaskDesignTokens.ink)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        if let dueAt = task.dueAt {
+                            Text(dueAt.formatted(date: .abbreviated, time: .omitted))
+                                .font(.system(size: 9))
+                                .foregroundStyle(TaskDesignTokens.quiet)
+                        }
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 42)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(width: 250)
+        .background(TaskDesignTokens.panel)
     }
 }
 

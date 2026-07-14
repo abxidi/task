@@ -45,6 +45,7 @@ enum TaskDesignTokens {
     static let markerSize: CGFloat = 24
     static let markerHoverSize: CGFloat = 26
     static let markerSelectedSize: CGFloat = 28
+    static let stackMarkerRearYOffset: CGFloat = 5
     static let plotInset: CGFloat = 24
     static let sidebarWidth: CGFloat = 205
     static let inspectorWidth: CGFloat = 292
