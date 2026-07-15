@@ -5,7 +5,6 @@ import TaskPersistence
 @MainActor
 final class TaskEditorModel: ObservableObject {
     @Published var draft: TaskDraft
-    @Published var isSettingsPresented = false
     @Published var errorMessage: String?
     @Published var showDiscardConfirmation = false
 

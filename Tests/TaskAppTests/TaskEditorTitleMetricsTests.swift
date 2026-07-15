@@ -11,4 +11,19 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
             ceil(font.ascender - font.descender + font.leading) + 8
         )
     }
+
+    func testEditorUsesInlineMetadataAndPriorityPopoverInsteadOfSettingsEntry() {
+        XCTAssertTrue(TaskEditorLayout.usesInlineMetadata)
+        XCTAssertFalse(TaskEditorLayout.showsTaskSettingsEntry)
+    }
+
+    func testEmptyEditorUsesCompactWritingSurface() {
+        XCTAssertEqual(TaskEditorLayout.titleContentWidth, 460)
+        XCTAssertEqual(TaskEditorLayout.emptySubtaskHeight, 68)
+    }
+
+    func testPriorityEntryUsesNormalAndHighPriorityLabels() {
+        XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 0, importance: 0)), "正常")
+        XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 2, importance: 3)), "高优")
+    }
 }

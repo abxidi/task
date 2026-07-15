@@ -11,6 +11,8 @@ struct TaskEditorSheet: View {
     @FocusState private var titleFocused: Bool
     @FocusState private var descriptionFocused: Bool
     @State private var reminderWarning: String?
+    @State private var isPriorityPickerPresented = false
+    @State private var isEditingTags = false
     private let onClose: (() -> Void)?
     private let outsideDismissToken: UUID?
 
@@ -33,40 +35,8 @@ struct TaskEditorSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
-            HStack(spacing: 8) {
-                Text(model.existing == nil ? "新建任务" : "编辑任务")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(TaskDesignTokens.ink)
-                Text("⌘N")
-                    .font(.system(size: 8, weight: .medium))
-                    .foregroundStyle(TaskDesignTokens.quiet)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 2)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(TaskDesignTokens.lineStrong, lineWidth: 1)
-                    )
+            HStack {
                 Spacer()
-                Button {
-                    model.isSettingsPresented.toggle()
-                } label: {
-                    Label("任务设置", systemImage: "slider.horizontal.3")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(TaskDesignTokens.muted)
-                        .padding(.horizontal, 10)
-                        .frame(height: 31)
-                        .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 5))
-                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(TaskDesignTokens.lineStrong, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut("p", modifiers: [.command, .shift])
-                .help("打开任务设置")
-                .popover(isPresented: $model.isSettingsPresented, arrowEdge: .top) {
-                    TaskSettingsInspector(draft: $model.draft)
-                        .frame(width: 420, height: 640)
-                }
-
                 Button {
                     attemptDismiss()
                 } label: {
@@ -78,60 +48,61 @@ struct TaskEditorSheet: View {
                 .buttonStyle(.plain)
                 .help("关闭")
             }
-            .padding(.horizontal, 20)
-            .frame(height: 54)
+            .padding(.horizontal, 24)
+            .frame(height: 40)
             .background(TaskDesignTokens.panel)
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(TaskDesignTokens.line).frame(height: 1)
-            }
 
-            // Body
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(spacing: 0) {
-                        TextField("任务标题", text: $model.draft.title)
-                            .textFieldStyle(.plain)
-                            .font(TaskDesignTokens.sheetTitleFont)
-                            .foregroundStyle(TaskDesignTokens.ink)
-                            .focused($titleFocused)
-                            .frame(minHeight: TaskEditorTitleMetrics.minimumFieldHeight)
+                        HStack(spacing: 12) {
+                            priorityEntry
+
+                            TextField("任务标题", text: $model.draft.title)
+                                .textFieldStyle(.plain)
+                                .font(TaskDesignTokens.sheetTitleFont)
+                                .foregroundStyle(TaskDesignTokens.ink)
+                                .focused($titleFocused)
+                                .frame(minHeight: TaskEditorTitleMetrics.minimumFieldHeight)
+                        }
                         Rectangle()
                             .fill(TaskDesignTokens.line)
                             .frame(height: 1)
                     }
-                    .padding(.bottom, 14)
+                    .frame(width: TaskEditorLayout.titleContentWidth, alignment: .leading)
 
-                        HStack {
-                            Text("任务描述")
-                                .font(.system(size: 11, weight: .bold))
-                            Spacer()
-                            Text("支持轻量 Markdown")
-                                .font(.system(size: 8))
+                    ZStack(alignment: .topLeading) {
+                        if model.draft.details.isEmpty {
+                            Text("添加备注...")
+                                .font(.system(size: 15))
                                 .foregroundStyle(TaskDesignTokens.quiet)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 13)
+                                .allowsHitTesting(false)
                         }
-                        .padding(.top, 22)
-
                         TextEditor(text: $model.draft.details)
-                            .font(.system(size: 12))
+                            .font(.system(size: 15))
                             .foregroundStyle(TaskDesignTokens.muted)
                             .scrollContentBackground(.hidden)
                             .focused($descriptionFocused)
-                            .padding(isDescriptionExpanded ? 14 : 8)
-                            .frame(height: isDescriptionExpanded ? 170 : 40)
-                            .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 6))
-                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(TaskDesignTokens.line, lineWidth: 1))
-                            .padding(.top, 9)
+                            .padding(.vertical, 8)
+                    }
+                    .frame(height: isDescriptionExpanded ? 142 : 48)
+                    .padding(.top, 14)
 
-                        SubtaskEditor(
-                            items: $model.draft.subtasks,
-                            completion: $model.draft.subtaskCompletion
-                        )
-                            .padding(.top, 24)
+                    SubtaskEditor(
+                        items: $model.draft.subtasks,
+                        completion: $model.draft.subtaskCompletion
+                    )
+                    .padding(.top, 20)
+
+                    editorMetadata
+                        .padding(.top, 28)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, 34)
-            .padding(.vertical, 28)
+            .padding(.horizontal, 64)
+            .padding(.bottom, 24)
             .background(TaskDesignTokens.panel)
 
             // Footer
@@ -140,6 +111,16 @@ struct TaskEditorSheet: View {
                     .font(.system(size: 8))
                     .foregroundStyle(TaskDesignTokens.quiet)
                 Spacer()
+                Button {
+                    model.draft.isCompleted.toggle()
+                } label: {
+                    Image(systemName: model.draft.isCompleted ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 15))
+                        .foregroundStyle(model.draft.isCompleted ? TaskDesignTokens.success : TaskDesignTokens.quiet)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help(model.draft.isCompleted ? "标记为未完成" : "标记为已完成")
                 TaskChromeButton(title: "取消", action: attemptDismiss)
                 TaskChromeButton(title: "保存任务", style: .primary, action: save)
                     .disabled(!model.canSave)
@@ -153,7 +134,7 @@ struct TaskEditorSheet: View {
                 Rectangle().fill(TaskDesignTokens.line).frame(height: 1)
             }
         }
-        .frame(minWidth: 760, idealWidth: 860, minHeight: 560)
+        .frame(minWidth: 820, idealWidth: 980, minHeight: 620)
         .background(TaskDesignTokens.panel)
         .onAppear { titleFocused = true }
         .onChange(of: outsideDismissToken) { _, token in
@@ -175,6 +156,111 @@ struct TaskEditorSheet: View {
 
     private var isDescriptionExpanded: Bool {
         descriptionFocused || !model.draft.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var priorityEntry: some View {
+        Button {
+            isPriorityPickerPresented.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                PriorityMarkerView(coordinate: model.draft.coordinate, title: "优先级", isSelected: false, isCompact: true)
+                Text(TaskEditorPriorityLabel.title(for: model.draft.coordinate))
+                    .font(.system(size: 12, weight: .bold))
+            }
+            .foregroundStyle(TaskDesignTokens.muted)
+            .padding(.horizontal, 8)
+            .frame(height: 30)
+            .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 5))
+            .overlay(RoundedRectangle(cornerRadius: 5).stroke(TaskDesignTokens.lineStrong, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut("p", modifiers: [.command, .shift])
+        .help("设置任务优先级")
+        .popover(isPresented: $isPriorityPickerPresented, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("任务优先级")
+                    .font(.system(size: 12, weight: .bold))
+                Text("颜色表示紧急度，数字表示重要度")
+                    .font(.system(size: 9))
+                    .foregroundStyle(TaskDesignTokens.quiet)
+                PriorityCoordinateEditor(coordinate: $model.draft.coordinate)
+                    .frame(width: 320, height: 320)
+            }
+            .padding(16)
+        }
+    }
+
+    private var editorMetadata: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Text("任务标签")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(TaskDesignTokens.muted)
+                if model.draft.tagNames.isEmpty && !isEditingTags {
+                    Button {
+                        isEditingTags = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(TaskDesignTokens.quiet)
+                    }
+                    .buttonStyle(.plain)
+                    .help("添加标签")
+                } else {
+                    TextField("添加标签，用逗号分隔", text: tagText)
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 12))
+                        .padding(.horizontal, 10)
+                        .frame(width: 260, height: 30)
+                        .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 5))
+                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(TaskDesignTokens.line, lineWidth: 1))
+                        .onSubmit { isEditingTags = false }
+                }
+            }
+
+            HStack(spacing: 12) {
+                Text("任务日期")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(TaskDesignTokens.muted)
+                Toggle("", isOn: hasDueDate)
+                    .labelsHidden()
+                    .toggleStyle(.checkbox)
+                if model.draft.dueAt != nil {
+                    DatePicker("", selection: dueDate, displayedComponents: [.date, .hourAndMinute])
+                        .labelsHidden()
+                } else {
+                    Text("未设置")
+                        .font(.system(size: 12))
+                        .foregroundStyle(TaskDesignTokens.quiet)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private var tagText: Binding<String> {
+        Binding(
+            get: { model.draft.tagNames.joined(separator: ", ") },
+            set: {
+                model.draft.tagNames = $0.split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+            }
+        )
+    }
+
+    private var hasDueDate: Binding<Bool> {
+        Binding(
+            get: { model.draft.dueAt != nil },
+            set: { model.draft.dueAt = $0 ? (model.draft.dueAt ?? .now) : nil }
+        )
+    }
+
+    private var dueDate: Binding<Date> {
+        Binding(
+            get: { model.draft.dueAt ?? .now },
+            set: { model.draft.dueAt = $0 }
+        )
     }
 
     private func save() {
@@ -231,4 +317,19 @@ struct TaskEditorSheet: View {
 
 enum TaskEditorTitleMetrics {
     static let minimumFieldHeight: CGFloat = 44
+}
+
+enum TaskEditorLayout {
+    static let usesInlineMetadata = true
+    static let showsTaskSettingsEntry = false
+    static let titleContentWidth: CGFloat = 460
+    static let emptySubtaskHeight: CGFloat = 68
+}
+
+enum TaskEditorPriorityLabel {
+    static func title(for coordinate: PriorityCoordinate) -> String {
+        if coordinate.importance >= 2 { return "高优" }
+        if coordinate.importance <= -2 { return "低优" }
+        return "正常"
+    }
 }
