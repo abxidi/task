@@ -5,6 +5,7 @@ import TaskPersistence
 @main
 struct TaskApplication: App {
     private let container = try! ModelContainerFactory.make()
+    private let statusBarController = StatusBarController(TaskWindowActivator.showMainWindow)
     @StateObject private var globalShortcutManager = GlobalShortcutManager()
 
     var body: some Scene {
