@@ -91,7 +91,10 @@ struct TaskEditorSheet: View {
 
                     SubtaskEditor(
                         items: $model.draft.subtasks,
-                        completion: $model.draft.subtaskCompletion
+                        completion: $model.draft.subtaskCompletion,
+                        onToggle: { model.draft.toggleSubtaskCompletion(at: $0) },
+                        onMove: moveSubtasks,
+                        onAdd: { model.draft.addSubtask($0) }
                     )
                     .padding(.top, 20)
 
@@ -245,6 +248,12 @@ struct TaskEditorSheet: View {
         } catch {
             model.errorMessage = error.localizedDescription
         }
+    }
+
+    private func moveSubtasks(from source: IndexSet, to destination: Int) {
+        model.draft.subtasks.move(fromOffsets: source, toOffset: destination)
+        model.draft.subtaskCompletion.move(fromOffsets: source, toOffset: destination)
+        model.draft.normalizeSubtaskOrdering()
     }
 
     private func attemptDismiss() {

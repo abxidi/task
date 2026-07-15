@@ -3,6 +3,9 @@ import SwiftUI
 struct SubtaskEditor: View {
     @Binding var items: [String]
     @Binding var completion: [Bool]
+    let onToggle: (Int) -> Void
+    let onMove: (IndexSet, Int) -> Void
+    let onAdd: (String) -> Void
     @State private var newTitle = ""
     @FocusState private var isNewFocused: Bool
     @State private var isAddingFirst = false
@@ -15,7 +18,7 @@ struct SubtaskEditor: View {
                         ForEach(Array(items.enumerated()), id: \.offset) { index, _ in
                             HStack(spacing: 9) {
                                 Button {
-                                    completion[index].toggle()
+                                    onToggle(index)
                                 } label: {
                                     Image(systemName: completion[index] ? "checkmark.square.fill" : "square")
                                         .font(.system(size: 13))
@@ -35,7 +38,7 @@ struct SubtaskEditor: View {
                             .listRowSeparator(.visible)
                             .listRowBackground(Color.clear)
                         }
-                        .onMove(perform: move)
+                        .onMove(perform: onMove)
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -93,15 +96,10 @@ struct SubtaskEditor: View {
             isAddingFirst = false
             return
         }
-        items.append(trimmed)
-        completion.append(false)
+        onAdd(trimmed)
         newTitle = ""
         isAddingFirst = true
         isNewFocused = true
     }
 
-    private func move(from source: IndexSet, to destination: Int) {
-        items.move(fromOffsets: source, toOffset: destination)
-        completion.move(fromOffsets: source, toOffset: destination)
-    }
 }

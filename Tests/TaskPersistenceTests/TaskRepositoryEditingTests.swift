@@ -19,7 +19,7 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(item.details, "Context")
         XCTAssertEqual(item.urgency, 3)
         XCTAssertEqual(item.importance, 3)
-        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["Price", "Channels"])
-        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted), [true, false])
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["Channels", "Price"])
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted), [false, true])
     }
 }

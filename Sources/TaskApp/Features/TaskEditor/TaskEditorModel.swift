@@ -27,7 +27,7 @@ final class TaskEditorModel: ObservableObject {
     }
 
     static func draft(from item: TaskItem) -> TaskDraft {
-        TaskDraft(
+        var draft = TaskDraft(
             title: item.title,
             details: item.details,
             coordinate: .init(uncheckedUrgency: item.urgency, importance: item.importance),
@@ -41,6 +41,8 @@ final class TaskEditorModel: ObservableObject {
             boardColumnID: item.boardColumn?.id,
             tagNames: item.tags.map(\.name)
         )
+        draft.normalizeSubtaskOrdering()
+        return draft
     }
 }
 

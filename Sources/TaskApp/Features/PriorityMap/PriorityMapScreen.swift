@@ -299,7 +299,10 @@ struct PriorityMapScreen: View {
                                 .lineSpacing(4)
                         }
 
-                        let subtasks = selection.subtasks.sorted { $0.order < $1.order }
+                        let subtasks = SubtaskOrder.incompleteFirst(
+                            selection.subtasks.sorted { $0.order < $1.order },
+                            isCompleted: \.isCompleted
+                        )
                         if !subtasks.isEmpty {
                             VStack(alignment: .leading, spacing: 0) {
                                 Text("子任务 · \(subtasks.filter(\.isCompleted).count) / \(subtasks.count)")

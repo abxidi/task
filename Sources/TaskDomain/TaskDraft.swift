@@ -53,9 +53,60 @@ public struct TaskDraft: Equatable, Sendable {
         }
         copy.subtasks = normalizedSubtasks.map(\.0)
         copy.subtaskCompletion = normalizedSubtasks.map(\.1)
+        copy.normalizeSubtaskOrdering()
         copy.tagNames = tagNames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         if let minutes = estimatedMinutes, minutes <= 0 { throw TaskDraftError.invalidEstimate }
         return copy
+    }
+
+    public mutating func toggleSubtaskCompletion(at index: Int) {
+        normalizeSubtaskOrdering()
+        guard subtasks.indices.contains(index) else { return }
+
+        let title = subtasks.remove(at: index)
+        let wasCompleted = index < subtaskCompletion.count ? subtaskCompletion.remove(at: index) : false
+
+        if wasCompleted {
+            subtasks.insert(title, at: 0)
+            subtaskCompletion.insert(false, at: 0)
+        } else {
+            subtasks.append(title)
+            subtaskCompletion.append(true)
+        }
+    }
+
+    public mutating func addSubtask(_ title: String) {
+        normalizeSubtaskOrdering()
+        let insertionIndex = subtaskCompletion.firstIndex(of: true) ?? subtasks.endIndex
+        subtasks.insert(title, at: insertionIndex)
+        subtaskCompletion.insert(false, at: insertionIndex)
+    }
+
+    public mutating func normalizeSubtaskOrdering() {
+        let entries = subtasks.enumerated().map { index, title in
+            (title: title, isCompleted: index < subtaskCompletion.count ? subtaskCompletion[index] : false)
+        }
+        let ordered = SubtaskOrder.incompleteFirst(entries) { $0.isCompleted }
+        subtasks = ordered.map(\.title)
+        subtaskCompletion = ordered.map(\.isCompleted)
+    }
+}
+
+public enum SubtaskOrder {
+    public static func incompleteFirst<Element>(
+        _ items: [Element],
+        isCompleted: (Element) -> Bool
+    ) -> [Element] {
+        items.enumerated()
+            .sorted { left, right in
+                let leftCompleted = isCompleted(left.element)
+                let rightCompleted = isCompleted(right.element)
+                if leftCompleted == rightCompleted {
+                    return left.offset < right.offset
+                }
+                return !leftCompleted
+            }
+            .map(\.element)
     }
 }
 
