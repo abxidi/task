@@ -15,6 +15,36 @@ final class BoardDragPresentationTests: XCTestCase {
     }
 
     @MainActor
+    func testBeginInitializesTargetAndLocation() {
+        let sourceLaneID = UUID()
+        let taskID = UUID()
+        let location = CGPoint(x: 24, y: 36)
+        let coordinator = BoardDragCoordinator()
+
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: location)
+
+        XCTAssertEqual(coordinator.taskID, taskID)
+        XCTAssertEqual(coordinator.sourceColumnID, sourceLaneID)
+        XCTAssertEqual(coordinator.targetColumnID, sourceLaneID)
+        XCTAssertEqual(coordinator.location, location)
+    }
+
+    @MainActor
+    func testUpdateChangesTargetAndLocation() {
+        let sourceLaneID = UUID()
+        let targetLaneID = UUID()
+        let taskID = UUID()
+        let location = CGPoint(x: 120, y: 80)
+        let coordinator = BoardDragCoordinator()
+
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: .zero)
+        coordinator.update(location: location, targetColumnID: targetLaneID)
+
+        XCTAssertEqual(coordinator.targetColumnID, targetLaneID)
+        XCTAssertEqual(coordinator.location, location)
+    }
+
+    @MainActor
     func testFinishingDragMovesOnlyToAnotherLaneAndClearsSession() {
         let sourceLaneID = UUID()
         let targetLaneID = UUID()
@@ -32,5 +62,26 @@ final class BoardDragPresentationTests: XCTestCase {
         coordinator.update(location: CGPoint(x: 80, y: 80), targetColumnID: sourceLaneID)
 
         XCTAssertNil(coordinator.finish())
+        XCTAssertNil(coordinator.taskID)
+        XCTAssertNil(coordinator.sourceColumnID)
+        XCTAssertNil(coordinator.targetColumnID)
+        XCTAssertNil(coordinator.location)
+    }
+
+    @MainActor
+    func testCancelClearsAllDragSessionState() {
+        let sourceLaneID = UUID()
+        let targetLaneID = UUID()
+        let taskID = UUID()
+        let coordinator = BoardDragCoordinator()
+
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: .zero)
+        coordinator.update(location: CGPoint(x: 120, y: 80), targetColumnID: targetLaneID)
+        coordinator.cancel()
+
+        XCTAssertNil(coordinator.taskID)
+        XCTAssertNil(coordinator.sourceColumnID)
+        XCTAssertNil(coordinator.targetColumnID)
+        XCTAssertNil(coordinator.location)
     }
 }
