@@ -21,6 +21,7 @@ struct ProjectBoardScreen: View {
     @State private var renamingColumn: BoardColumn?
     @State private var renameText = ""
     @State private var rangeDays = 7
+    @State private var draggingTaskID: UUID?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -102,7 +103,8 @@ struct ProjectBoardScreen: View {
                                         },
                                         onArchive: {
                                             try? ProjectRepository(context: modelContext).archiveColumn(column)
-                                        }
+                                        },
+                                        draggingTaskID: $draggingTaskID
                                     )
                                 }
                             }
@@ -186,6 +188,7 @@ struct ProjectBoardScreen: View {
                 selectedProjectID = projects.first?.id
             }
         }
+        .onExitCommand(perform: draggingTaskID == nil ? nil : { draggingTaskID = nil })
     }
 
     private var selectedProject: Project? {
@@ -246,6 +249,7 @@ struct ProjectBoardScreen: View {
 
     private func move(_ taskID: UUID, to column: BoardColumn, project: Project) {
         guard let task = projectTasks(project).first(where: { $0.id == taskID }) else { return }
+        guard task.boardColumn?.id != column.id else { return }
         do {
             try BoardWorkflowService(context: modelContext).move(task, to: column)
         } catch {

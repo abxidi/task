@@ -1,5 +1,14 @@
+import Foundation
 import SwiftUI
 import TaskPersistence
+
+enum BoardDragPresentation {
+    static let hiddenSourceOpacity = 0.001
+
+    static func sourceOpacity(for taskID: UUID, draggingTaskID: UUID?) -> Double {
+        taskID == draggingTaskID ? hiddenSourceOpacity : 1
+    }
+}
 
 struct BoardColumnView: View {
     let column: BoardColumn
@@ -10,6 +19,7 @@ struct BoardColumnView: View {
     let onArchive: () -> Void
     var onOpenTask: (TaskItem) -> Void = { _ in }
     var onToggleTask: (TaskItem) -> Void = { _ in }
+    @Binding var draggingTaskID: UUID?
     @State private var isTargeted = false
 
     var body: some View {
@@ -47,7 +57,15 @@ struct BoardColumnView: View {
                 LazyVStack(alignment: .leading, spacing: 7) {
                     ForEach(tasks) { task in
                         BoardTaskCard(task: task) { onToggleTask(task) }
-                            .draggable(task.id.uuidString)
+                            .opacity(BoardDragPresentation.sourceOpacity(for: task.id, draggingTaskID: draggingTaskID))
+                            .onDrag {
+                                draggingTaskID = task.id
+                                return NSItemProvider(object: task.id.uuidString as NSString)
+                            } preview: {
+                                BoardTaskCard(task: task)
+                                    .frame(width: 248, alignment: .leading)
+                                    .compositingGroup()
+                            }
                             .onTapGesture { onOpenTask(task) }
                     }
                 }
@@ -74,9 +92,17 @@ struct BoardColumnView: View {
                 .stroke(isTargeted ? TaskDesignTokens.acid : Color.clear, lineWidth: 2)
         )
         .dropDestination(for: String.self, action: { values, _ in
-            guard let raw = values.first, let id = UUID(uuidString: raw) else { return false }
+            guard let raw = values.first, let id = UUID(uuidString: raw) else {
+                draggingTaskID = nil
+                return false
+            }
             onDropTaskID(id)
+            draggingTaskID = nil
             return true
-        }, isTargeted: { isTargeted = $0 })
+        }, isTargeted: { targeted in
+            withTransaction(Transaction(animation: nil)) {
+                isTargeted = targeted
+            }
+        })
     }
 }

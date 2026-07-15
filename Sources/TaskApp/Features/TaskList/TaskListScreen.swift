@@ -33,6 +33,7 @@ struct TaskListScreen: View {
     @State private var creatingInColumn: BoardColumn?
     @State private var renamingColumn: BoardColumn?
     @State private var renameText = ""
+    @State private var draggingTaskID: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,7 +67,8 @@ struct TaskListScreen: View {
                                 },
                                 onArchive: {},
                                 onOpenTask: { editingTask = $0 },
-                                onToggleTask: toggle
+                                onToggleTask: toggle,
+                                draggingTaskID: $draggingTaskID
                             )
                         }
                     }
@@ -83,6 +85,7 @@ struct TaskListScreen: View {
         .onChange(of: initialScope) { _, newValue in
             if let newValue { scope = newValue }
         }
+        .onExitCommand(perform: draggingTaskID == nil ? nil : { draggingTaskID = nil })
         .overlay {
             if let task = editingTask {
                 TaskEditorOverlay(mode: .edit(task)) {
@@ -178,6 +181,7 @@ struct TaskListScreen: View {
 
     private func move(_ taskID: UUID, to lane: BoardColumn) {
         guard let task = allTasks.first(where: { $0.id == taskID }) else { return }
+        guard task.boardColumn?.id != lane.id else { return }
         try? BoardWorkflowService(context: modelContext).move(task, to: lane)
     }
 
