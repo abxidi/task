@@ -12,7 +12,6 @@ struct TaskEditorSheet: View {
     @FocusState private var descriptionFocused: Bool
     @State private var reminderWarning: String?
     @State private var isPriorityPickerPresented = false
-    @State private var isEditingTags = false
     private let onClose: (() -> Void)?
     private let outsideDismissToken: UUID?
 
@@ -192,31 +191,7 @@ struct TaskEditorSheet: View {
 
     private var editorMetadata: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(spacing: 12) {
-                Text("任务标签")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(TaskDesignTokens.muted)
-                if model.draft.tagNames.isEmpty && !isEditingTags {
-                    Button {
-                        isEditingTags = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(TaskDesignTokens.quiet)
-                    }
-                    .buttonStyle(.plain)
-                    .help("添加标签")
-                } else {
-                    TextField("添加标签，用逗号分隔", text: tagText)
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 12))
-                        .padding(.horizontal, 10)
-                        .frame(width: 260, height: 30)
-                        .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 5))
-                        .overlay(RoundedRectangle(cornerRadius: 5).stroke(TaskDesignTokens.line, lineWidth: 1))
-                        .onSubmit { isEditingTags = false }
-                }
-            }
+            TaskTagEditor(tagNames: $model.draft.tagNames)
 
             HStack(spacing: 12) {
                 Text("任务日期")
@@ -236,17 +211,6 @@ struct TaskEditorSheet: View {
                 Spacer()
             }
         }
-    }
-
-    private var tagText: Binding<String> {
-        Binding(
-            get: { model.draft.tagNames.joined(separator: ", ") },
-            set: {
-                model.draft.tagNames = $0.split(separator: ",")
-                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
-            }
-        )
     }
 
     private var hasDueDate: Binding<Bool> {

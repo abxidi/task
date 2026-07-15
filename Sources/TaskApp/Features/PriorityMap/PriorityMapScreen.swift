@@ -32,18 +32,15 @@ struct PriorityMapScreen: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<TaskItem> { !$0.isCompleted }, sort: \TaskItem.createdAt)
     private var tasks: [TaskItem]
+    @Query(sort: \Tag.name) private var tags: [Tag]
     @AppStorage("dailyCapacityMinutes") private var capacityMinutes = 480
     @State private var selection: TaskItem?
     @StateObject private var saver = PriorityMoveSaver()
     @State private var editingTask: TaskItem?
-    @State private var filter: MapFilter = .all
+    @State private var filter: PriorityMapScope = .all
+    @State private var selectedTagNames: Set<String> = []
+    @State private var isFilterPresented = false
     @State private var keyboardFocusRequest = 0
-
-    private enum MapFilter: String, CaseIterable {
-        case all = "全部"
-        case work = "工作"
-        case personal = "个人"
-    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -54,8 +51,12 @@ struct PriorityMapScreen: View {
                     primaryActionTitle: "新任务",
                     primaryAction: onCreateTask,
                     secondaryActionTitle: "筛选",
-                    secondaryAction: {}
+                    secondaryAction: { isFilterPresented.toggle() }
                 )
+                .popover(isPresented: $isFilterPresented, arrowEdge: .top) {
+                    PriorityMapFilterPopover(tags: tags, selectedTagNames: $selectedTagNames)
+                        .frame(width: 220)
+                }
                 .padding(.bottom, 20)
 
                 mapMetrics
@@ -63,7 +64,7 @@ struct PriorityMapScreen: View {
 
                 HStack {
                     HStack(spacing: 2) {
-                        ForEach(MapFilter.allCases, id: \.self) { item in
+                        ForEach(PriorityMapScope.allCases, id: \.self) { item in
                             Button {
                                 filter = item
                             } label: {
@@ -94,12 +95,13 @@ struct PriorityMapScreen: View {
                     ZStack {
                         if filteredTasks.isEmpty {
                             PriorityMapView(tasks: [], selection: $selection, onMove: move)
-                            VStack(spacing: 12) {
-                                Text("还没有任务")
-                                    .font(.headline)
-                                    .foregroundStyle(TaskDesignTokens.muted)
-                                TaskChromeButton(title: "新建任务", systemImage: "plus", style: .primary, action: onCreateTask)
-                            }
+                            Text("还没有任务")
+                                .font(.headline)
+                                .foregroundStyle(TaskDesignTokens.muted)
+                            TaskChromeButton(title: "新建任务", systemImage: "plus", style: .primary, action: onCreateTask)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                                .padding(.top, 42)
+                                .padding(.trailing, 10)
                         } else {
                             PriorityMapView(
                                 tasks: filteredTasks,
@@ -152,27 +154,31 @@ struct PriorityMapScreen: View {
             }
         }
         .onAppear {
+            TaskTagDefaults.ensurePersisted(in: modelContext)
             if selection == nil {
                 selection = filteredTasks.first
             }
         }
-    }
-
-    private var filteredTasks: [TaskItem] {
-        switch filter {
-        case .all: return tasks
-        case .work: return tasks.filter { $0.project != nil }
-        case .personal: return tasks.filter { $0.project == nil }
+        .onChange(of: filter) { _, _ in
+            selection = filteredTasks.first
+        }
+        .onChange(of: selectedTagNames) { _, _ in
+            selection = filteredTasks.first
         }
     }
 
+    private var filteredTasks: [TaskItem] {
+        PriorityMapTaskFilter.tasks(from: tasks, scope: filter, selectedTagNames: selectedTagNames)
+    }
+
     private var mapMetrics: some View {
-        let actNow = tasks.filter {
+        let mapTasks = filteredTasks
+        let actNow = mapTasks.filter {
             PriorityCoordinate(uncheckedUrgency: $0.urgency, importance: $0.importance).quadrant == .actNow
         }.count
-        let planned = tasks.compactMap(\.estimatedMinutes).reduce(0, +)
+        let planned = mapTasks.compactMap(\.estimatedMinutes).reduce(0, +)
         let metrics = PlanMetricsCalculator.calculate(
-            tasks: tasks.map {
+            tasks: mapTasks.map {
                 MetricsTask(
                     id: $0.id,
                     coordinate: .init(uncheckedUrgency: $0.urgency, importance: $0.importance),
@@ -188,8 +194,8 @@ struct PriorityMapScreen: View {
         )
 
         return HStack(spacing: 1) {
-            metricCell(title: "本周任务", value: "\(tasks.count)", note: nil)
-            metricCell(title: "立即处理", value: "\(actNow)", note: tasks.isEmpty ? nil : "\(Int((Double(actNow) / Double(max(tasks.count, 1))) * 100))%")
+            metricCell(title: "本周任务", value: "\(mapTasks.count)", note: nil)
+            metricCell(title: "立即处理", value: "\(actNow)", note: mapTasks.isEmpty ? nil : "\(Int((Double(actNow) / Double(max(mapTasks.count, 1))) * 100))%")
             metricCell(title: "计划投入", value: String(format: "%.0fh", Double(planned) / 60), note: "可控")
             metricCell(title: "计划健康度", value: "\(metrics.healthScore)", note: "/ 100")
         }
@@ -253,6 +259,17 @@ struct PriorityMapScreen: View {
                             .font(TaskDesignTokens.inspectorTitleFont)
                             .foregroundStyle(TaskDesignTokens.ink)
                             .padding(.bottom, 12)
+
+                        if !selection.tags.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 5) {
+                                    ForEach(selection.tags, id: \.id) { tag in
+                                        TaskTagPill(name: tag.name)
+                                    }
+                                }
+                            }
+                            .padding(.bottom, 12)
+                        }
 
                         HStack(spacing: 6) {
                             if let due = selection.dueAt {

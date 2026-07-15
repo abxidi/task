@@ -132,13 +132,12 @@ struct PriorityMapView: View {
                 }
             }
             .buttonStyle(.plain)
-            .position(point(for: stack.coordinate, in: plot))
             .popover(
                 isPresented: Binding(
                     get: { expandedStack?.id == stack.id },
                     set: { if !$0 { expandedStack = nil } }
                 ),
-                arrowEdge: .bottom
+                arrowEdge: .top
             ) {
                 PriorityMapStackPopover(tasks: stack.tasks) { task in
                     selection = task
@@ -146,6 +145,7 @@ struct PriorityMapView: View {
                     onInteraction()
                 }
             }
+            .position(point(for: stack.coordinate, in: plot))
         } else if let task = stack.tasks.first {
             let isSelected = selection?.id == task.id
             ZStack {
