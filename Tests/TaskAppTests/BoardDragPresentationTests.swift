@@ -15,33 +15,51 @@ final class BoardDragPresentationTests: XCTestCase {
     }
 
     @MainActor
-    func testBeginInitializesTargetAndLocation() {
+    func testBeginInitializesTargetAndBoardLocation() {
         let sourceLaneID = UUID()
         let taskID = UUID()
-        let location = CGPoint(x: 24, y: 36)
+        let boardLocation = CGPoint(x: 24, y: 36)
         let coordinator = BoardDragCoordinator()
 
-        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: location)
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, boardLocation: boardLocation)
 
         XCTAssertEqual(coordinator.taskID, taskID)
         XCTAssertEqual(coordinator.sourceColumnID, sourceLaneID)
         XCTAssertEqual(coordinator.targetColumnID, sourceLaneID)
-        XCTAssertEqual(coordinator.location, location)
+        XCTAssertEqual(coordinator.boardLocation, boardLocation)
+        XCTAssertEqual(
+            coordinator.session,
+            BoardDragSession(
+                taskID: taskID,
+                sourceColumnID: sourceLaneID,
+                targetColumnID: sourceLaneID,
+                boardLocation: boardLocation
+            )
+        )
     }
 
     @MainActor
-    func testUpdateChangesTargetAndLocation() {
+    func testUpdateChangesTargetAndBoardLocation() {
         let sourceLaneID = UUID()
         let targetLaneID = UUID()
         let taskID = UUID()
-        let location = CGPoint(x: 120, y: 80)
+        let boardLocation = CGPoint(x: 120, y: 80)
         let coordinator = BoardDragCoordinator()
 
-        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: .zero)
-        coordinator.update(location: location, targetColumnID: targetLaneID)
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, boardLocation: .zero)
+        coordinator.update(boardLocation: boardLocation, targetColumnID: targetLaneID)
 
         XCTAssertEqual(coordinator.targetColumnID, targetLaneID)
-        XCTAssertEqual(coordinator.location, location)
+        XCTAssertEqual(coordinator.boardLocation, boardLocation)
+        XCTAssertEqual(
+            coordinator.session,
+            BoardDragSession(
+                taskID: taskID,
+                sourceColumnID: sourceLaneID,
+                targetColumnID: targetLaneID,
+                boardLocation: boardLocation
+            )
+        )
     }
 
     @MainActor
@@ -51,23 +69,25 @@ final class BoardDragPresentationTests: XCTestCase {
         let taskID = UUID()
         let coordinator = BoardDragCoordinator()
 
-        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: .zero)
-        coordinator.update(location: CGPoint(x: 120, y: 80), targetColumnID: targetLaneID)
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, boardLocation: .zero)
+        coordinator.update(boardLocation: CGPoint(x: 120, y: 80), targetColumnID: targetLaneID)
 
         XCTAssertEqual(coordinator.finish(), BoardDragMove(taskID: taskID, targetColumnID: targetLaneID))
         XCTAssertNil(coordinator.taskID)
         XCTAssertNil(coordinator.sourceColumnID)
         XCTAssertNil(coordinator.targetColumnID)
-        XCTAssertNil(coordinator.location)
+        XCTAssertNil(coordinator.boardLocation)
+        XCTAssertNil(coordinator.session)
 
-        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: .zero)
-        coordinator.update(location: CGPoint(x: 80, y: 80), targetColumnID: sourceLaneID)
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, boardLocation: .zero)
+        coordinator.update(boardLocation: CGPoint(x: 80, y: 80), targetColumnID: sourceLaneID)
 
         XCTAssertNil(coordinator.finish())
         XCTAssertNil(coordinator.taskID)
         XCTAssertNil(coordinator.sourceColumnID)
         XCTAssertNil(coordinator.targetColumnID)
-        XCTAssertNil(coordinator.location)
+        XCTAssertNil(coordinator.boardLocation)
+        XCTAssertNil(coordinator.session)
     }
 
     @MainActor
@@ -77,13 +97,14 @@ final class BoardDragPresentationTests: XCTestCase {
         let taskID = UUID()
         let coordinator = BoardDragCoordinator()
 
-        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: .zero)
-        coordinator.update(location: CGPoint(x: 120, y: 80), targetColumnID: targetLaneID)
+        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, boardLocation: .zero)
+        coordinator.update(boardLocation: CGPoint(x: 120, y: 80), targetColumnID: targetLaneID)
         coordinator.cancel()
 
         XCTAssertNil(coordinator.taskID)
         XCTAssertNil(coordinator.sourceColumnID)
         XCTAssertNil(coordinator.targetColumnID)
-        XCTAssertNil(coordinator.location)
+        XCTAssertNil(coordinator.boardLocation)
+        XCTAssertNil(coordinator.session)
     }
 }

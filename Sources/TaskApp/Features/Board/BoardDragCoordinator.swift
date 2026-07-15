@@ -6,46 +6,60 @@ struct BoardDragMove: Equatable {
     let targetColumnID: UUID
 }
 
+struct BoardDragSession: Equatable {
+    let taskID: UUID
+    let sourceColumnID: UUID
+    let targetColumnID: UUID
+
+    /// Pointer location expressed in the board's coordinate space.
+    let boardLocation: CGPoint
+}
+
 @MainActor
 final class BoardDragCoordinator: ObservableObject {
-    @Published private(set) var taskID: UUID?
-    @Published private(set) var sourceColumnID: UUID?
-    @Published private(set) var targetColumnID: UUID?
-    @Published private(set) var location: CGPoint?
+    @Published private(set) var session: BoardDragSession?
 
-    func begin(taskID: UUID, sourceColumnID: UUID, location: CGPoint) {
-        self.taskID = taskID
-        self.sourceColumnID = sourceColumnID
-        targetColumnID = sourceColumnID
-        self.location = location
+    var taskID: UUID? { session?.taskID }
+    var sourceColumnID: UUID? { session?.sourceColumnID }
+    var targetColumnID: UUID? { session?.targetColumnID }
+
+    /// Pointer location expressed in the board's coordinate space.
+    var boardLocation: CGPoint? { session?.boardLocation }
+
+    func begin(taskID: UUID, sourceColumnID: UUID, boardLocation: CGPoint) {
+        session = BoardDragSession(
+            taskID: taskID,
+            sourceColumnID: sourceColumnID,
+            targetColumnID: sourceColumnID,
+            boardLocation: boardLocation
+        )
     }
 
-    func update(location: CGPoint, targetColumnID: UUID) {
-        guard taskID != nil else { return }
+    func update(boardLocation: CGPoint, targetColumnID: UUID) {
+        guard let session else { return }
 
-        self.location = location
-        self.targetColumnID = targetColumnID
+        self.session = BoardDragSession(
+            taskID: session.taskID,
+            sourceColumnID: session.sourceColumnID,
+            targetColumnID: targetColumnID,
+            boardLocation: boardLocation
+        )
     }
 
     func finish() -> BoardDragMove? {
         defer { cancel() }
 
         guard
-            let taskID,
-            let sourceColumnID,
-            let targetColumnID,
-            sourceColumnID != targetColumnID
+            let session,
+            session.sourceColumnID != session.targetColumnID
         else {
             return nil
         }
 
-        return BoardDragMove(taskID: taskID, targetColumnID: targetColumnID)
+        return BoardDragMove(taskID: session.taskID, targetColumnID: session.targetColumnID)
     }
 
     func cancel() {
-        taskID = nil
-        sourceColumnID = nil
-        targetColumnID = nil
-        location = nil
+        session = nil
     }
 }
