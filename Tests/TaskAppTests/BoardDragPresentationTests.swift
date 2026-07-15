@@ -56,7 +56,9 @@ final class BoardDragPresentationTests: XCTestCase {
 
         XCTAssertEqual(coordinator.finish(), BoardDragMove(taskID: taskID, targetColumnID: targetLaneID))
         XCTAssertNil(coordinator.taskID)
+        XCTAssertNil(coordinator.sourceColumnID)
         XCTAssertNil(coordinator.targetColumnID)
+        XCTAssertNil(coordinator.location)
 
         coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, location: .zero)
         coordinator.update(location: CGPoint(x: 80, y: 80), targetColumnID: sourceLaneID)
