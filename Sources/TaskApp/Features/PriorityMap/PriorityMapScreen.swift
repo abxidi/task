@@ -98,10 +98,6 @@ struct PriorityMapScreen: View {
                             Text("还没有任务")
                                 .font(.headline)
                                 .foregroundStyle(TaskDesignTokens.muted)
-                            TaskChromeButton(title: "新建任务", systemImage: "plus", style: .primary, action: onCreateTask)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                                .padding(.top, 42)
-                                .padding(.trailing, 10)
                         } else {
                             PriorityMapView(
                                 tasks: filteredTasks,

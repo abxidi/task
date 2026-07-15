@@ -38,7 +38,6 @@ struct PriorityMapView: View {
     @Binding var selection: TaskItem?
     let onMove: (TaskItem, PriorityCoordinate) -> Void
     var onInteraction: () -> Void = {}
-    var showSelectionLabel: Bool = true
     @State private var expandedStack: PriorityMapTaskStack?
 
     var body: some View {
@@ -119,17 +118,11 @@ struct PriorityMapView: View {
                 expandedStack = stack
                 onInteraction()
             } label: {
-                ZStack {
-                    PriorityStackMarkerView(
-                        coordinate: stack.coordinate,
-                        count: stack.tasks.count,
-                        isSelected: selectedTask != nil
-                    )
-                    if let selectedTask, showSelectionLabel {
-                        selectionLabel(for: selectedTask, coordinate: stack.coordinate)
-                            .offset(x: stack.coordinate.urgency >= 2 ? -96 : 96, y: -30)
-                    }
-                }
+                PriorityStackMarkerView(
+                    coordinate: stack.coordinate,
+                    count: stack.tasks.count,
+                    isSelected: selectedTask != nil
+                )
             }
             .buttonStyle(.plain)
             .popover(
@@ -148,13 +141,7 @@ struct PriorityMapView: View {
             .position(point(for: stack.coordinate, in: plot))
         } else if let task = stack.tasks.first {
             let isSelected = selection?.id == task.id
-            ZStack {
-                PriorityMarkerView(coordinate: stack.coordinate, title: task.title, isSelected: isSelected)
-                if isSelected && showSelectionLabel {
-                    selectionLabel(for: task, coordinate: stack.coordinate)
-                        .offset(x: stack.coordinate.urgency >= 2 ? -96 : 96, y: -28)
-                }
-            }
+            PriorityMarkerView(coordinate: stack.coordinate, title: task.title, isSelected: isSelected)
             .position(point(for: stack.coordinate, in: plot))
             .gesture(dragGesture(for: task, plot: plot))
             .onTapGesture {
@@ -162,24 +149,6 @@ struct PriorityMapView: View {
                 onInteraction()
             }
         }
-    }
-
-    private func selectionLabel(for task: TaskItem, coordinate: PriorityCoordinate) -> some View {
-        HStack(spacing: 8) {
-            Text(task.title)
-                .font(.system(size: 9, weight: .bold))
-                .lineLimit(1)
-            Text("\(signed(coordinate.urgency)) / \(signed(coordinate.importance))")
-                .font(.system(size: 8, weight: .medium))
-                .foregroundStyle(TaskDesignTokens.quiet)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: 5))
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(TaskDesignTokens.lineStrong, lineWidth: 1))
-        .shadow(color: .black.opacity(0.12), radius: 8, y: 4)
-        .frame(minWidth: 160, alignment: .leading)
-        .allowsHitTesting(false)
     }
 
     private func point(for coordinate: PriorityCoordinate, in plot: CGRect) -> CGPoint {
@@ -203,9 +172,6 @@ struct PriorityMapView: View {
             }
     }
 
-    private func signed(_ value: Int) -> String {
-        value > 0 ? "+\(value)" : "\(value)"
-    }
 }
 
 private struct PriorityMapStackPopover: View {
