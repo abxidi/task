@@ -15,6 +15,9 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
     func testEditorUsesInlineMetadataAndPriorityPopoverInsteadOfSettingsEntry() {
         XCTAssertTrue(TaskEditorLayout.usesInlineMetadata)
         XCTAssertFalse(TaskEditorLayout.showsTaskSettingsEntry)
+        XCTAssertTrue(TaskEditorLayout.usesAutomaticSave)
+        XCTAssertFalse(TaskEditorLayout.showsSaveButton)
+        XCTAssertFalse(TaskEditorLayout.showsCancelButton)
     }
 
     func testEmptyEditorUsesCompactWritingSurface() {

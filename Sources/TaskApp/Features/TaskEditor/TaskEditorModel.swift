@@ -6,24 +6,28 @@ import TaskPersistence
 final class TaskEditorModel: ObservableObject {
     @Published var draft: TaskDraft
     @Published var errorMessage: String?
-    @Published var showDiscardConfirmation = false
 
-    let original: TaskDraft
-    let existing: TaskItem?
+    private(set) var existing: TaskItem?
 
     init(draft: TaskDraft, existing: TaskItem? = nil) {
         self.draft = draft
-        self.original = draft
         self.existing = existing
     }
 
-    var canSave: Bool {
-        guard let validated = try? draft.validated() else { return false }
-        return !validated.title.isEmpty
-    }
+    @discardableResult
+    func autoSave(using repository: TaskRepository) throws -> TaskItem? {
+        guard !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return existing
+        }
 
-    var isDirty: Bool {
-        draft != original
+        if let existing {
+            try repository.updateTask(existing, with: draft)
+            return existing
+        }
+
+        let created = try repository.saveNewTask(draft)
+        existing = created
+        return created
     }
 
     static func draft(from item: TaskItem) -> TaskDraft {

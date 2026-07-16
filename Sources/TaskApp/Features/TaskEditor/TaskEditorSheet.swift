@@ -12,6 +12,7 @@ struct TaskEditorSheet: View {
     @FocusState private var descriptionFocused: Bool
     @State private var reminderWarning: String?
     @State private var isPriorityPickerPresented = false
+    @State private var autoSaveTask: Swift.Task<Void, Never>?
     private let onClose: (() -> Void)?
     private let outsideDismissToken: UUID?
 
@@ -37,7 +38,7 @@ struct TaskEditorSheet: View {
             HStack {
                 Spacer()
                 Button {
-                    attemptDismiss()
+                    closeEditor()
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 11, weight: .semibold))
@@ -107,52 +108,26 @@ struct TaskEditorSheet: View {
             .padding(.bottom, 24)
             .background(TaskDesignTokens.panel)
 
-            // Footer
-            HStack {
-                Text("⌘↩ 保存　Esc 取消")
-                    .font(.system(size: 8))
-                    .foregroundStyle(TaskDesignTokens.quiet)
-                Spacer()
-                Button {
-                    model.draft.isCompleted.toggle()
-                } label: {
-                    Image(systemName: model.draft.isCompleted ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 15))
-                        .foregroundStyle(model.draft.isCompleted ? TaskDesignTokens.success : TaskDesignTokens.quiet)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .help(model.draft.isCompleted ? "标记为未完成" : "标记为已完成")
-                TaskChromeButton(title: "取消", action: attemptDismiss)
-                TaskChromeButton(title: "保存任务", style: .primary, action: save)
-                    .disabled(!model.canSave)
-                    .opacity(model.canSave ? 1 : 0.5)
-                    .keyboardShortcut(.return, modifiers: .command)
-            }
-            .padding(.horizontal, 20)
-            .frame(height: 58)
-            .background(TaskDesignTokens.sheetFoot)
-            .overlay(alignment: .top) {
-                Rectangle().fill(TaskDesignTokens.line).frame(height: 1)
-            }
         }
         .frame(minWidth: 820, idealWidth: 980, minHeight: 620)
         .background(TaskDesignTokens.panel)
         .onAppear { titleFocused = true }
-        .onChange(of: outsideDismissToken) { _, token in
-            if token != nil { attemptDismiss() }
+        .onChange(of: model.draft) { _, _ in
+            scheduleAutoSave()
         }
-        .alert("无法保存", isPresented: Binding(
+        .onChange(of: outsideDismissToken) { _, token in
+            if token != nil { closeEditor() }
+        }
+        .onDisappear {
+            autoSaveTask?.cancel()
+        }
+        .alert("自动保存失败", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
         )) {
             Button("好", role: .cancel) { titleFocused = true }
         } message: {
             Text(model.errorMessage ?? "")
-        }
-        .confirmationDialog("放弃未保存的修改？", isPresented: $model.showDiscardConfirmation) {
-            Button("放弃", role: .destructive) { finishDismiss() }
-            Button("继续编辑", role: .cancel) {}
         }
     }
 
@@ -213,6 +188,23 @@ struct TaskEditorSheet: View {
                 }
                 Spacer()
             }
+
+            HStack(spacing: 12) {
+                Text("完成状态")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(TaskDesignTokens.muted)
+                Spacer()
+                Button {
+                    model.draft.isCompleted.toggle()
+                } label: {
+                    Image(systemName: model.draft.isCompleted ? "checkmark.square.fill" : "square")
+                        .font(.system(size: 15))
+                        .foregroundStyle(model.draft.isCompleted ? TaskDesignTokens.success : TaskDesignTokens.quiet)
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help(model.draft.isCompleted ? "标记为未完成" : "标记为已完成")
+            }
         }
     }
 
@@ -230,23 +222,30 @@ struct TaskEditorSheet: View {
         )
     }
 
-    private func save() {
+    private func scheduleAutoSave() {
+        autoSaveTask?.cancel()
+        autoSaveTask = Swift.Task { @MainActor in
+            try? await Swift.Task.sleep(for: .milliseconds(250))
+            guard !Swift.Task.isCancelled else { return }
+            _ = persistDraft()
+        }
+    }
+
+    @discardableResult
+    private func persistDraft() -> Bool {
+        guard !model.draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return true
+        }
+
         do {
             let repository = TaskRepository(context: modelContext)
-            let saved: TaskItem
-            if let existing = model.existing {
-                try repository.updateTask(existing, with: model.draft)
-                saved = existing
-            } else {
-                saved = try repository.saveNewTask(model.draft)
-            }
-            Task { await syncReminder(for: saved) }
-            finishDismiss()
-        } catch TaskDraftError.emptyTitle {
-            model.errorMessage = "请输入任务标题"
-            titleFocused = true
+            guard let saved = try model.autoSave(using: repository) else { return true }
+            model.errorMessage = nil
+            Swift.Task { await syncReminder(for: saved) }
+            return true
         } catch {
             model.errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -256,15 +255,11 @@ struct TaskEditorSheet: View {
         model.draft.normalizeSubtaskOrdering()
     }
 
-    private func attemptDismiss() {
-        if model.isDirty {
-            model.showDiscardConfirmation = true
-        } else {
-            finishDismiss()
-        }
-    }
+    private func closeEditor() {
+        autoSaveTask?.cancel()
+        autoSaveTask = nil
+        guard persistDraft() else { return }
 
-    private func finishDismiss() {
         if let onClose {
             onClose()
         } else {
@@ -295,6 +290,9 @@ enum TaskEditorTitleMetrics {
 enum TaskEditorLayout {
     static let usesInlineMetadata = true
     static let showsTaskSettingsEntry = false
+    static let usesAutomaticSave = true
+    static let showsSaveButton = false
+    static let showsCancelButton = false
     static let titleContentWidth: CGFloat = 460
     static let emptySubtaskHeight: CGFloat = 68
 }
