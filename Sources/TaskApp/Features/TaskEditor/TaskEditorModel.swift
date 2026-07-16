@@ -21,13 +21,19 @@ final class TaskEditorModel: ObservableObject {
         }
 
         if let existing {
-            try repository.updateTask(existing, with: draft)
+            var metadataDraft = draft
+            metadataDraft.details = existing.details
+            try repository.updateTask(existing, with: metadataDraft)
             return existing
         }
 
         let created = try repository.saveNewTask(draft)
         existing = created
         return created
+    }
+
+    func acceptSavedDetails(_ details: String) {
+        draft.details = details
     }
 
     static func draft(from item: TaskItem) -> TaskDraft {

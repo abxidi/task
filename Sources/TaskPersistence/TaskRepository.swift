@@ -32,6 +32,12 @@ public final class TaskRepository {
         try context.save()
     }
 
+    public func updateDetails(_ item: TaskItem, details: String) throws {
+        item.details = details
+        item.updatedAt = .now
+        try context.save()
+    }
+
     public func updatePriority(_ item: TaskItem, urgency: Int, importance: Int) throws {
         let coordinate = try PriorityCoordinate(urgency: urgency, importance: importance)
         item.urgency = coordinate.urgency

@@ -26,22 +26,26 @@ final class TaskEditorAutoSaveTests: XCTestCase {
         XCTAssertEqual(item.title, "Draft launch plan")
     }
 
-    func testLaterDraftChangesUpdateTheCreatedTask() throws {
+    func testMetadataAutosaveDoesNotOverwriteMarkdownDetails() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
+        let item = TaskItem(title: "Draft launch plan")
+        item.details = "# Markdown body"
+        container.mainContext.insert(item)
+        try container.mainContext.save()
         let repository = TaskRepository(context: container.mainContext)
-        let model = TaskEditorModel(draft: TaskDraft(title: "Draft launch plan"))
-
-        let created = try XCTUnwrap(model.autoSave(using: repository))
-        model.draft.details = "Context"
+        let model = TaskEditorModel(
+            draft: TaskDraft(title: "Draft launch plan", details: "Stale details"),
+            existing: item
+        )
         model.draft.coordinate = .init(uncheckedUrgency: 3, importance: 2)
 
         let updated = try XCTUnwrap(model.autoSave(using: repository))
 
-        XCTAssertTrue(created === updated)
+        XCTAssertTrue(item === updated)
         XCTAssertEqual(try repository.fetchAllTasks().count, 1)
-        XCTAssertEqual(created.details, "Context")
-        XCTAssertEqual(created.urgency, 3)
-        XCTAssertEqual(created.importance, 2)
+        XCTAssertEqual(item.details, "# Markdown body")
+        XCTAssertEqual(item.urgency, 3)
+        XCTAssertEqual(item.importance, 2)
     }
 
     func testExistingTaskIsUpdatedInPlace() throws {
@@ -51,7 +55,7 @@ final class TaskEditorAutoSaveTests: XCTestCase {
         try container.mainContext.save()
         let repository = TaskRepository(context: container.mainContext)
         let model = TaskEditorModel(
-            draft: TaskDraft(title: "New title", details: "Updated details"),
+            draft: TaskDraft(title: "New title", details: "Stale details"),
             existing: item
         )
 
@@ -59,7 +63,7 @@ final class TaskEditorAutoSaveTests: XCTestCase {
 
         XCTAssertTrue(item === updated)
         XCTAssertEqual(item.title, "New title")
-        XCTAssertEqual(item.details, "Updated details")
+        XCTAssertEqual(item.details, "")
         XCTAssertEqual(try repository.fetchAllTasks().count, 1)
     }
 }
