@@ -4,9 +4,20 @@ import TaskPersistence
 
 enum BoardDragPresentation {
     static let placeholderOpacity = 0.35
+    static let liftDuration = 0.14
+    static let dropDuration = 0.18
+    static let liftedScale = 1.015
 
     static func sourceOpacity(isActiveSource: Bool) -> Double {
         isActiveSource ? placeholderOpacity : 1
+    }
+
+    static func placeholderIndex(requested: Int, taskCount: Int) -> Int {
+        min(max(requested, 0), taskCount)
+    }
+
+    static func showsTargetPlaceholder(sourceColumnID: UUID, targetColumnID: UUID) -> Bool {
+        sourceColumnID != targetColumnID
     }
 
     static func overlayOffset(

@@ -3,12 +3,41 @@ import XCTest
 @testable import TaskApp
 
 final class BoardDragPresentationTests: XCTestCase {
+    func testMotionContractUsesShortEaseOutDurations() {
+        XCTAssertEqual(BoardDragPresentation.liftDuration, 0.14)
+        XCTAssertEqual(BoardDragPresentation.dropDuration, 0.18)
+        XCTAssertEqual(BoardDragPresentation.liftedScale, 1.015)
+    }
+
     func testActiveSourceUsesPlaceholderOpacityInsteadOfBeingHidden() {
         XCTAssertEqual(
             BoardDragPresentation.sourceOpacity(isActiveSource: true),
             0.35
         )
         XCTAssertEqual(BoardDragPresentation.sourceOpacity(isActiveSource: false), 1)
+    }
+
+    func testPlaceholderIndexIsClampedToLaneBounds() {
+        XCTAssertEqual(BoardDragPresentation.placeholderIndex(requested: -1, taskCount: 2), 0)
+        XCTAssertEqual(BoardDragPresentation.placeholderIndex(requested: 1, taskCount: 2), 1)
+        XCTAssertEqual(BoardDragPresentation.placeholderIndex(requested: 9, taskCount: 2), 2)
+    }
+
+    func testSourceLaneDoesNotRenderASecondPlaceholder() {
+        let sourceColumnID = UUID()
+
+        XCTAssertFalse(
+            BoardDragPresentation.showsTargetPlaceholder(
+                sourceColumnID: sourceColumnID,
+                targetColumnID: sourceColumnID
+            )
+        )
+        XCTAssertTrue(
+            BoardDragPresentation.showsTargetPlaceholder(
+                sourceColumnID: sourceColumnID,
+                targetColumnID: UUID()
+            )
+        )
     }
 
     func testOverlayOffsetPreservesGrabPointRelativeToTheCard() {
@@ -50,6 +79,50 @@ final class BoardDragPresentationTests: XCTestCase {
             ),
             CGSize(width: 252, height: 206)
         )
+    }
+
+    @MainActor
+    func testSettlementRetainsSessionAtDestinationUntilCompletion() {
+        let taskID = UUID()
+        let sourceColumnID = UUID()
+        let sourceFrame = CGRect(x: 40, y: 50, width: 228, height: 92)
+        let coordinator = BoardDragCoordinator()
+
+        coordinator.begin(
+            taskID: taskID,
+            sourceColumnID: sourceColumnID,
+            boardLocation: CGPoint(x: 100, y: 80),
+            sourceFrame: sourceFrame,
+            grabOffset: CGPoint(x: 30, y: 20)
+        )
+        coordinator.settle(to: CGRect(x: 420, y: 160, width: 228, height: 92))
+
+        XCTAssertEqual(coordinator.session?.phase, .settling)
+        XCTAssertEqual(coordinator.boardLocation, CGPoint(x: 450, y: 180))
+        XCTAssertEqual(coordinator.session?.sourceFrame, sourceFrame)
+
+        coordinator.complete()
+
+        XCTAssertNil(coordinator.session)
+    }
+
+    @MainActor
+    func testPointerUpdatesAreIgnoredWhileSettling() {
+        let coordinator = BoardDragCoordinator()
+        let targetColumnID = UUID()
+
+        coordinator.begin(
+            taskID: UUID(),
+            sourceColumnID: UUID(),
+            boardLocation: CGPoint(x: 100, y: 80),
+            sourceFrame: CGRect(x: 40, y: 50, width: 228, height: 92),
+            grabOffset: CGPoint(x: 30, y: 20)
+        )
+        coordinator.settle(to: CGRect(x: 420, y: 160, width: 228, height: 92))
+        coordinator.update(boardLocation: CGPoint(x: 900, y: 700), targetColumnID: targetColumnID)
+
+        XCTAssertEqual(coordinator.boardLocation, CGPoint(x: 450, y: 180))
+        XCTAssertNotEqual(coordinator.targetColumnID, targetColumnID)
     }
 
     @MainActor
