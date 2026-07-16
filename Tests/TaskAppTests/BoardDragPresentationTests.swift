@@ -3,15 +3,12 @@ import XCTest
 @testable import TaskApp
 
 final class BoardDragPresentationTests: XCTestCase {
-    func testOnlyActiveDragSourceIsVisuallyHidden() {
-        let draggedID = UUID()
-
+    func testActiveSourceUsesPlaceholderOpacityInsteadOfBeingHidden() {
         XCTAssertEqual(
-            BoardDragPresentation.sourceOpacity(for: draggedID, draggingTaskID: draggedID),
-            BoardDragPresentation.hiddenSourceOpacity
+            BoardDragPresentation.sourceOpacity(isActiveSource: true),
+            0.35
         )
-        XCTAssertEqual(BoardDragPresentation.sourceOpacity(for: UUID(), draggingTaskID: draggedID), 1)
-        XCTAssertEqual(BoardDragPresentation.sourceOpacity(for: draggedID, draggingTaskID: nil), 1)
+        XCTAssertEqual(BoardDragPresentation.sourceOpacity(isActiveSource: false), 1)
     }
 
     @MainActor

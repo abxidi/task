@@ -21,9 +21,80 @@ struct ProjectBoardScreen: View {
     @State private var renamingColumn: BoardColumn?
     @State private var renameText = ""
     @State private var rangeDays = 7
-    @State private var draggingTaskID: UUID?
+    @StateObject private var dragCoordinator = BoardDragCoordinator()
+    @State private var columnFrames: [UUID: CGRect] = [:]
 
     var body: some View {
+        GeometryReader { geometry in
+            AnyView(boardLayout)
+                .overlay(alignment: .topLeading) {
+                    dragOverlay(in: geometry)
+                }
+                .onPreferenceChange(BoardColumnFramePreferenceKey.self) { columnFrames = $0 }
+        }
+        .alert("操作失败", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
+        .sheet(isPresented: $isCreatingProject) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("新建项目")
+                    .font(TaskDesignTokens.pageTitleFont)
+                TextField("项目名称", text: $newProjectName)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    TaskChromeButton(title: "取消") { isCreatingProject = false }
+                    Spacer()
+                    TaskChromeButton(title: "创建", style: .primary, action: createProject)
+                        .disabled(newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .padding(24)
+            .frame(width: 360)
+            .background(TaskDesignTokens.panel)
+        }
+        .overlay {
+            if creatingInColumn != nil {
+                TaskEditorOverlay(mode: .create) {
+                    creatingInColumn = nil
+                }
+            }
+        }
+        .sheet(item: $renamingColumn) { column in
+            VStack(alignment: .leading, spacing: 16) {
+                Text("重命名列")
+                    .font(.title3.weight(.semibold))
+                TextField("列名", text: $renameText)
+                    .textFieldStyle(.roundedBorder)
+                HStack {
+                    TaskChromeButton(title: "取消") { renamingColumn = nil }
+                    Spacer()
+                    TaskChromeButton(title: "保存", style: .primary) {
+                        try? ProjectRepository(context: modelContext).renameColumn(column, to: renameText)
+                        renamingColumn = nil
+                    }
+                }
+            }
+            .padding(24)
+            .frame(width: 320)
+            .background(TaskDesignTokens.panel)
+        }
+        .onAppear {
+            if selectedProjectID == nil {
+                selectedProjectID = projects.first?.id
+            }
+        }
+        .onExitCommand {
+            guard dragCoordinator.taskID != nil else { return }
+            dragCoordinator.cancel()
+        }
+    }
+
+    private var boardLayout: some View {
         HStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -95,7 +166,6 @@ struct ProjectBoardScreen: View {
                                     BoardColumnView(
                                         column: column,
                                         tasks: tasks(in: column, project: project),
-                                        onDropTaskID: { move($0, to: column, project: project) },
                                         onAddTask: { creatingInColumn = column },
                                         onRename: {
                                             renamingColumn = column
@@ -104,7 +174,9 @@ struct ProjectBoardScreen: View {
                                         onArchive: {
                                             try? ProjectRepository(context: modelContext).archiveColumn(column)
                                         },
-                                        draggingTaskID: $draggingTaskID
+                                        onDragChanged: updateDrag,
+                                        onDragEnded: { finishDrag(at: $0, in: project) },
+                                        dragCoordinator: dragCoordinator
                                     )
                                 }
                             }
@@ -132,63 +204,6 @@ struct ProjectBoardScreen: View {
                 }
             }
         }
-        .alert("操作失败", isPresented: Binding(
-            get: { errorMessage != nil },
-            set: { if !$0 { errorMessage = nil } }
-        )) {
-            Button("好", role: .cancel) {}
-        } message: {
-            Text(errorMessage ?? "")
-        }
-        .sheet(isPresented: $isCreatingProject) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("新建项目")
-                    .font(TaskDesignTokens.pageTitleFont)
-                TextField("项目名称", text: $newProjectName)
-                    .textFieldStyle(.roundedBorder)
-                HStack {
-                    TaskChromeButton(title: "取消") { isCreatingProject = false }
-                    Spacer()
-                    TaskChromeButton(title: "创建", style: .primary, action: createProject)
-                        .disabled(newProjectName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-            .padding(24)
-            .frame(width: 360)
-            .background(TaskDesignTokens.panel)
-        }
-        .overlay {
-            if creatingInColumn != nil {
-                TaskEditorOverlay(mode: .create) {
-                    creatingInColumn = nil
-                }
-            }
-        }
-        .sheet(item: $renamingColumn) { column in
-            VStack(alignment: .leading, spacing: 16) {
-                Text("重命名列")
-                    .font(.title3.weight(.semibold))
-                TextField("列名", text: $renameText)
-                    .textFieldStyle(.roundedBorder)
-                HStack {
-                    TaskChromeButton(title: "取消") { renamingColumn = nil }
-                    Spacer()
-                    TaskChromeButton(title: "保存", style: .primary) {
-                        try? ProjectRepository(context: modelContext).renameColumn(column, to: renameText)
-                        renamingColumn = nil
-                    }
-                }
-            }
-            .padding(24)
-            .frame(width: 320)
-            .background(TaskDesignTokens.panel)
-        }
-        .onAppear {
-            if selectedProjectID == nil {
-                selectedProjectID = projects.first?.id
-            }
-        }
-        .onExitCommand(perform: draggingTaskID == nil ? nil : { draggingTaskID = nil })
     }
 
     private var selectedProject: Project? {
@@ -254,6 +269,51 @@ struct ProjectBoardScreen: View {
             try BoardWorkflowService(context: modelContext).move(task, to: column)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func updateDrag(at boardLocation: CGPoint) {
+        guard let sourceColumnID = dragCoordinator.sourceColumnID else { return }
+        let targetColumnID = columnID(at: boardLocation) ?? dragCoordinator.targetColumnID ?? sourceColumnID
+        dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
+    }
+
+    private func finishDrag(at boardLocation: CGPoint, in project: Project) {
+        guard let targetColumnID = columnID(at: boardLocation) else {
+            dragCoordinator.cancel()
+            return
+        }
+
+        dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
+        guard
+            let dragMove = dragCoordinator.finish(),
+            let targetColumn = sortedColumns(project).first(where: { $0.id == dragMove.targetColumnID })
+        else {
+            return
+        }
+        move(dragMove.taskID, to: targetColumn, project: project)
+    }
+
+    private func columnID(at boardLocation: CGPoint) -> UUID? {
+        columnFrames.first { $0.value.contains(boardLocation) }?.key
+    }
+
+    @ViewBuilder
+    private func dragOverlay(in geometry: GeometryProxy) -> some View {
+        if
+            let session = dragCoordinator.session,
+            let task = allTasks.first(where: { $0.id == session.taskID })
+        {
+            let globalFrame = geometry.frame(in: .global)
+            BoardTaskCard(task: task)
+                .frame(width: 248, alignment: .leading)
+                .position(
+                    x: session.boardLocation.x - globalFrame.minX,
+                    y: session.boardLocation.y - globalFrame.minY
+                )
+                .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
     }
 
