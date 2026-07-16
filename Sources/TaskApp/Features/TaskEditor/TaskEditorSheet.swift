@@ -13,6 +13,8 @@ struct TaskEditorSheet: View {
     @State private var reminderWarning: String?
     @State private var isPriorityPickerPresented = false
     @State private var autoSaveTask: Swift.Task<Void, Never>?
+    @StateObject private var markdownSession: MarkdownDraftSession
+    @State private var isMarkdownPresented = false
     private let onClose: (() -> Void)?
     private let outsideDismissToken: UUID?
 
@@ -23,14 +25,17 @@ struct TaskEditorSheet: View {
     ) {
         self.onClose = onClose
         self.outsideDismissToken = outsideDismissToken
+        let editorModel: TaskEditorModel
         switch mode {
         case .create:
-            _model = StateObject(wrappedValue: TaskEditorModel(draft: TaskDraft(title: "")))
+            editorModel = TaskEditorModel(draft: TaskDraft(title: ""))
         case .createInColumn(let columnID):
-            _model = StateObject(wrappedValue: TaskEditorModel(draft: TaskDraft(title: "", boardColumnID: columnID)))
+            editorModel = TaskEditorModel(draft: TaskDraft(title: "", boardColumnID: columnID))
         case .edit(let item):
-            _model = StateObject(wrappedValue: TaskEditorModel(draft: TaskEditorModel.draft(from: item), existing: item))
+            editorModel = TaskEditorModel(draft: TaskEditorModel.draft(from: item), existing: item)
         }
+        _model = StateObject(wrappedValue: editorModel)
+        _markdownSession = StateObject(wrappedValue: MarkdownDraftSession(details: editorModel.draft.details))
     }
 
     var body: some View {
@@ -89,6 +94,8 @@ struct TaskEditorSheet: View {
                     }
                     .frame(height: isDescriptionExpanded ? 142 : 48)
                     .padding(.top, 14)
+                    .contentShape(Rectangle())
+                    .onTapGesture { openMarkdown() }
 
                     SubtaskEditor(
                         items: $model.draft.subtasks,
@@ -128,6 +135,19 @@ struct TaskEditorSheet: View {
             Button("好", role: .cancel) { titleFocused = true }
         } message: {
             Text(model.errorMessage ?? "")
+        }
+        .overlay {
+            if isMarkdownPresented {
+                MarkdownTaskEditor(
+                    session: markdownSession,
+                    task: { model.existing },
+                    onSave: { details in
+                        model.acceptSavedDetails(details)
+                        isMarkdownPresented = false
+                    },
+                    onCancel: { isMarkdownPresented = false }
+                )
+            }
         }
     }
 
@@ -253,6 +273,12 @@ struct TaskEditorSheet: View {
         model.draft.subtasks.move(fromOffsets: source, toOffset: destination)
         model.draft.subtaskCompletion.move(fromOffsets: source, toOffset: destination)
         model.draft.normalizeSubtaskOrdering()
+    }
+
+    private func openMarkdown() {
+        guard persistDraft(), model.existing != nil else { return }
+        markdownSession.details = model.draft.details
+        isMarkdownPresented = true
     }
 
     private func closeEditor() {
