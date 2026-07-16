@@ -310,11 +310,13 @@ struct TaskListScreen: View {
                 returnDragToSource(taskID: taskID)
                 return
             }
-            guard move(dragMove.taskID, to: lane) else {
+            guard BoardDragPresentation.completeHandoff(coordinator: dragCoordinator, performMove: {
+                move(dragMove.taskID, to: lane)
+            }) else {
                 returnDragToSource(taskID: taskID)
                 return
             }
-            finishDragPresentation()
+            settlementToken = nil
         case .cancel, .noMove:
             finishDragPresentation()
         }

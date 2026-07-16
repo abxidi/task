@@ -366,13 +366,18 @@ struct ProjectBoardScreen: View {
         case .move(let dragMove):
             guard
                 let project,
-                let targetColumn = sortedColumns(project).first(where: { $0.id == dragMove.targetColumnID }),
-                move(dragMove.taskID, to: targetColumn, project: project)
+                let targetColumn = sortedColumns(project).first(where: { $0.id == dragMove.targetColumnID })
             else {
                 returnDragToSource(taskID: taskID)
                 return
             }
-            finishDragPresentation()
+            guard BoardDragPresentation.completeHandoff(coordinator: dragCoordinator, performMove: {
+                move(dragMove.taskID, to: targetColumn, project: project)
+            }) else {
+                returnDragToSource(taskID: taskID)
+                return
+            }
+            settlementToken = nil
         case .cancel, .noMove:
             finishDragPresentation()
         }

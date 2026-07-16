@@ -10,6 +10,24 @@ enum BoardDragPresentation {
     static let targetGhostOpacity = 0.28
     static let targetTintOpacity = 0.12
 
+    static var handoffTransaction: Transaction {
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        return transaction
+    }
+
+    @MainActor
+    static func completeHandoff(
+        coordinator: BoardDragCoordinator,
+        performMove: () -> Bool
+    ) -> Bool {
+        withTransaction(handoffTransaction) {
+            guard performMove() else { return false }
+            coordinator.complete()
+            return true
+        }
+    }
+
     static func sourceOpacity(isActiveSource: Bool) -> Double {
         isActiveSource ? placeholderOpacity : 1
     }

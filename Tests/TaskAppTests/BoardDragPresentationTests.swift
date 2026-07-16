@@ -11,6 +11,13 @@ final class BoardDragPresentationTests: XCTestCase {
         XCTAssertEqual(BoardDragPresentation.targetTintOpacity, 0.12)
     }
 
+    func testSuccessfulDropHandoffDisablesFollowUpAnimations() {
+        let transaction = BoardDragPresentation.handoffTransaction
+
+        XCTAssertNil(transaction.animation)
+        XCTAssertTrue(transaction.disablesAnimations)
+    }
+
     func testActiveSourceUsesPlaceholderOpacityInsteadOfBeingHidden() {
         XCTAssertEqual(
             BoardDragPresentation.sourceOpacity(isActiveSource: true),
@@ -160,6 +167,22 @@ final class BoardDragPresentationTests: XCTestCase {
 
         XCTAssertEqual(coordinator.session?.phase, .settling)
         XCTAssertEqual(coordinator.boardLocation, CGPoint(x: 70, y: 70))
+    }
+
+    @MainActor
+    func testAtomicHandoffClearsSessionOnlyAfterSuccessfulMove() {
+        let coordinator = BoardDragCoordinator()
+        coordinator.begin(taskID: UUID(), sourceColumnID: UUID(), boardLocation: .zero)
+
+        XCTAssertFalse(
+            BoardDragPresentation.completeHandoff(coordinator: coordinator) { false }
+        )
+        XCTAssertNotNil(coordinator.session)
+
+        XCTAssertTrue(
+            BoardDragPresentation.completeHandoff(coordinator: coordinator) { true }
+        )
+        XCTAssertNil(coordinator.session)
     }
 
     func testCompletionDecisionCancelsWhenPointerIsOutsideAnyLane() {
