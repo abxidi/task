@@ -33,7 +33,7 @@
 - Modify: `Sources/TaskApp/Features/Board/BoardDragCoordinator.swift`
 - Modify: `Sources/TaskApp/Features/Board/BoardColumnView.swift`
 
-- [ ] **Step 1: Write failing state and geometry tests**
+- [x] **Step 1: Write failing state and geometry tests**
 
 Add tests proving that a session starts in `.dragging`, direct updates work only while dragging, settlement keeps the session alive, the settlement pointer preserves the original grab offset, and completion clears state:
 
@@ -68,7 +68,7 @@ func testMotionContractUsesShortEaseOutDurations() {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run:
 
@@ -78,7 +78,7 @@ swift test --filter BoardDragPresentationTests
 
 Expected: compilation fails because `BoardDragPhase`, `sourceFrame`, `settle(to:)`, `complete()`, and duration constants do not exist.
 
-- [ ] **Step 3: Implement the minimal state contract**
+- [x] **Step 3: Implement the minimal state contract**
 
 Add:
 
@@ -110,7 +110,7 @@ static let dropDuration = 0.18
 static let liftedScale = 1.015
 ```
 
-- [ ] **Step 4: Run GREEN and commit**
+- [x] **Step 4: Run GREEN and commit**
 
 ```bash
 swift test --filter BoardDragPresentationTests
@@ -127,7 +127,7 @@ Expected: focused suite passes with zero failures.
 - Modify: `Tests/TaskAppTests/BoardDragPresentationTests.swift`
 - Modify: `Sources/TaskApp/Features/Board/BoardColumnView.swift`
 
-- [ ] **Step 1: Write failing placeholder tests**
+- [x] **Step 1: Write failing placeholder tests**
 
 Add pure tests for clamping the insertion index and hiding a second placeholder in the source column:
 
@@ -146,13 +146,13 @@ func testSourceLaneDoesNotRenderASecondPlaceholder() {
 }
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run `swift test --filter BoardDragPresentationTests`.
 
 Expected: compilation fails because the placeholder helpers do not exist.
 
-- [ ] **Step 3: Implement the placeholder view and frame preference**
+- [x] **Step 3: Implement the placeholder view and frame preference**
 
 `BoardColumnView` receives `draggedTask: TaskItem?` and `targetPlaceholderIndex: Int?`. Inside `LazyVStack`, insert a `BoardTaskCard` ghost before the requested index or after the last card:
 
@@ -169,7 +169,7 @@ BoardTaskCard(task: task)
 
 Report the placeholder global frame through `BoardDropPlaceholderFramePreferenceKey` keyed by column ID. Animate only changes to the placeholder index/target with `.easeOut(duration: 0.14)`; do not attach an animation keyed by pointer location. Source opacity and target border use the same short animation. With Reduce Motion, replace scale/move transitions with opacity only.
 
-- [ ] **Step 4: Run GREEN and commit**
+- [x] **Step 4: Run GREEN and commit**
 
 ```bash
 swift test --filter BoardDragPresentationTests
@@ -188,13 +188,13 @@ Expected: tests and debug build pass.
 - Modify: `Sources/TaskApp/Features/Board/ProjectBoardScreen.swift`
 - Modify: `Tests/TaskAppTests/BoardDragPresentationTests.swift`
 
-- [ ] **Step 1: Add failing ownership and completion tests**
+- [x] **Step 1: Add failing ownership and completion tests**
 
 Replace the wrapper-state assertion with a direct coordinator ownership contract, and cover `.move`, `.noMove`, and `.cancel` decisions retaining the session until explicit completion.
 
 Run `swift test --filter BoardDragPresentationTests` and confirm the expected RED failure.
 
-- [ ] **Step 2: Wire target ordering and placeholder frames**
+- [x] **Step 2: Wire target ordering and placeholder frames**
 
 Both screens own one `@StateObject private var dragCoordinator = BoardDragCoordinator()` plus `[UUID: CGRect]` placeholder frames. For the active task and target column, compute the index it will occupy under the existing sort:
 
@@ -203,7 +203,7 @@ Both screens own one `@StateObject private var dragCoordinator = BoardDragCoordi
 
 Pass the task and index to `BoardColumnView`. No `manualOrder` or model field changes are introduced.
 
-- [ ] **Step 3: Animate settlement and then persist**
+- [x] **Step 3: Animate settlement and then persist**
 
 On pointer end:
 
@@ -216,7 +216,7 @@ On pointer end:
 
 The overlay uses the measured `sourceFrame.width`, retains the original grab offset, uses scale `1.015` and a stronger shadow only in `.dragging`, and remains at a high `zIndex` through `.settling`.
 
-- [ ] **Step 4: Verify focused behavior and commit**
+- [x] **Step 4: Verify focused behavior and commit**
 
 ```bash
 swift test --filter BoardDragPresentationTests
@@ -230,7 +230,7 @@ Expected: focused suites and debug build pass.
 
 ### Task 4: Verify, package, install, and reopen
 
-- [ ] **Step 1: Run project quality gates**
+- [x] **Step 1: Run project quality gates**
 
 ```bash
 swift test
@@ -242,10 +242,10 @@ rg -n -P -- '(?<![0-9])-5(?![0-9])|(?<![0-9])\+5(?![0-9])|11 级|11 个' Sources
 
 Expected: test/build/package/sign commands exit 0; obsolete-range scan prints no production matches.
 
-- [ ] **Step 2: Review the final diff**
+- [x] **Step 2: Review the final diff**
 
 Review tests first, then correctness, readability, architecture, security, and hot-path performance. Confirm continuous pointer updates have no implicit animation, no new dependency or model field exists, and only one root overlay is rendered.
 
-- [ ] **Step 3: Install and reopen**
+- [x] **Step 3: Install and reopen**
 
 Terminate running `TaskApp`, replace `/Applications/Task.app` with `dist/Task.app`, verify the installed signature, then open `/Applications/Task.app`. Confirm the running executable path resolves inside `/Applications/Task.app`.
