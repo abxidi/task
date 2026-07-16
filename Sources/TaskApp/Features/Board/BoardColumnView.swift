@@ -3,24 +3,96 @@ import SwiftUI
 import TaskPersistence
 
 enum BoardDragPresentation {
-    static let hiddenSourceOpacity = 0.001
+    static let placeholderOpacity = 0.35
 
-    static func sourceOpacity(for taskID: UUID, draggingTaskID: UUID?) -> Double {
-        taskID == draggingTaskID ? hiddenSourceOpacity : 1
+    static func sourceOpacity(isActiveSource: Bool) -> Double {
+        isActiveSource ? placeholderOpacity : 1
+    }
+
+    static func overlayOffset(
+        for pointerLocation: CGPoint,
+        grabOffset: CGPoint,
+        in overlayGlobalFrame: CGRect
+    ) -> CGSize {
+        CGSize(
+            width: pointerLocation.x - grabOffset.x - overlayGlobalFrame.minX,
+            height: pointerLocation.y - grabOffset.y - overlayGlobalFrame.minY
+        )
+    }
+
+    static func completionDecision(
+        taskID: UUID?,
+        sourceColumnID: UUID?,
+        targetColumnID: UUID?
+    ) -> BoardDragCompletionDecision {
+        guard let taskID, let sourceColumnID, let targetColumnID else {
+            return .cancel
+        }
+        guard sourceColumnID != targetColumnID else {
+            return .noMove
+        }
+        return .move(BoardDragMove(taskID: taskID, targetColumnID: targetColumnID))
+    }
+}
+
+enum BoardDragCompletionDecision: Equatable {
+    case cancel
+    case noMove
+    case move(BoardDragMove)
+}
+
+struct BoardColumnFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
+struct BoardTaskFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
     }
 }
 
 struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [TaskItem]
-    let onDropTaskID: (UUID) -> Void
     let onAddTask: () -> Void
     let onRename: () -> Void
     let onArchive: () -> Void
+    let onDragChanged: (CGPoint) -> Void
+    let onDragEnded: (CGPoint) -> Void
     var onOpenTask: (TaskItem) -> Void = { _ in }
     var onToggleTask: (TaskItem) -> Void = { _ in }
-    @Binding var draggingTaskID: UUID?
-    @State private var isTargeted = false
+    @ObservedObject var dragCoordinator: BoardDragCoordinator
+    @State private var taskFrames: [UUID: CGRect] = [:]
+
+    init(
+        column: BoardColumn,
+        tasks: [TaskItem],
+        onAddTask: @escaping () -> Void,
+        onRename: @escaping () -> Void,
+        onArchive: @escaping () -> Void,
+        onDragChanged: @escaping (CGPoint) -> Void,
+        onDragEnded: @escaping (CGPoint) -> Void,
+        onOpenTask: @escaping (TaskItem) -> Void = { _ in },
+        onToggleTask: @escaping (TaskItem) -> Void = { _ in },
+        dragCoordinator: BoardDragCoordinator
+    ) {
+        self.column = column
+        self.tasks = tasks
+        self.onAddTask = onAddTask
+        self.onRename = onRename
+        self.onArchive = onArchive
+        self.onDragChanged = onDragChanged
+        self.onDragEnded = onDragEnded
+        self.onOpenTask = onOpenTask
+        self.onToggleTask = onToggleTask
+        _dragCoordinator = ObservedObject(wrappedValue: dragCoordinator)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -57,15 +129,17 @@ struct BoardColumnView: View {
                 LazyVStack(alignment: .leading, spacing: 7) {
                     ForEach(tasks) { task in
                         BoardTaskCard(task: task) { onToggleTask(task) }
-                            .opacity(BoardDragPresentation.sourceOpacity(for: task.id, draggingTaskID: draggingTaskID))
-                            .onDrag {
-                                draggingTaskID = task.id
-                                return NSItemProvider(object: task.id.uuidString as NSString)
-                            } preview: {
-                                BoardTaskCard(task: task)
-                                    .frame(width: 248, alignment: .leading)
-                                    .compositingGroup()
+                            .opacity(BoardDragPresentation.sourceOpacity(isActiveSource: dragCoordinator.taskID == task.id))
+                            .contentShape(Rectangle())
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(
+                                        key: BoardTaskFramePreferenceKey.self,
+                                        value: [task.id: geometry.frame(in: .global)]
+                                    )
+                                }
                             }
+                            .gesture(dragGesture(for: task))
                             .onTapGesture { onOpenTask(task) }
                     }
                 }
@@ -85,24 +159,50 @@ struct BoardColumnView: View {
             .buttonStyle(.plain)
         }
         .padding(10)
-        .frame(minWidth: 220, idealWidth: 248, maxWidth: 280, alignment: .top)
+        .frame(width: 248, alignment: .top)
         .background(TaskDesignTokens.canvas.opacity(0.001))
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: BoardColumnFramePreferenceKey.self,
+                    value: [column.id: geometry.frame(in: .global)]
+                )
+            }
+        }
+        .onPreferenceChange(BoardTaskFramePreferenceKey.self) { taskFrames = $0 }
         .overlay(
             RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius)
-                .stroke(isTargeted ? TaskDesignTokens.acid : Color.clear, lineWidth: 2)
+                .strokeBorder(
+                    dragCoordinator.taskID != nil && dragCoordinator.targetColumnID == column.id
+                        ? TaskDesignTokens.acid
+                        : Color.clear,
+                    lineWidth: 2
+                )
         )
-        .dropDestination(for: String.self, action: { values, _ in
-            guard let raw = values.first, let id = UUID(uuidString: raw) else {
-                draggingTaskID = nil
-                return false
+    }
+
+    private func dragGesture(for task: TaskItem) -> some Gesture {
+        DragGesture(minimumDistance: 3, coordinateSpace: .global)
+            .onChanged { value in
+                guard let taskFrame = taskFrames[task.id] else { return }
+                let grabOffset = CGPoint(
+                    x: value.startLocation.x - taskFrame.minX,
+                    y: value.startLocation.y - taskFrame.minY
+                )
+                if dragCoordinator.taskID == nil {
+                    dragCoordinator.begin(
+                        taskID: task.id,
+                        sourceColumnID: column.id,
+                        boardLocation: value.location,
+                        grabOffset: grabOffset
+                    )
+                }
+                guard dragCoordinator.taskID == task.id else { return }
+                onDragChanged(value.location)
             }
-            onDropTaskID(id)
-            draggingTaskID = nil
-            return true
-        }, isTargeted: { targeted in
-            withTransaction(Transaction(animation: nil)) {
-                isTargeted = targeted
+            .onEnded { value in
+                guard dragCoordinator.taskID == task.id else { return }
+                onDragEnded(value.location)
             }
-        })
     }
 }
