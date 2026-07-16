@@ -7,6 +7,8 @@ final class BoardDragPresentationTests: XCTestCase {
         XCTAssertEqual(BoardDragPresentation.liftDuration, 0.14)
         XCTAssertEqual(BoardDragPresentation.dropDuration, 0.18)
         XCTAssertEqual(BoardDragPresentation.liftedScale, 1.015)
+        XCTAssertEqual(BoardDragPresentation.targetGhostOpacity, 0.28)
+        XCTAssertEqual(BoardDragPresentation.targetTintOpacity, 0.12)
     }
 
     func testActiveSourceUsesPlaceholderOpacityInsteadOfBeingHidden() {

@@ -7,6 +7,8 @@ enum BoardDragPresentation {
     static let liftDuration = 0.14
     static let dropDuration = 0.18
     static let liftedScale = 1.015
+    static let targetGhostOpacity = 0.28
+    static let targetTintOpacity = 0.12
 
     static func sourceOpacity(isActiveSource: Bool) -> Double {
         isActiveSource ? placeholderOpacity : 1
@@ -68,6 +70,14 @@ struct BoardTaskFramePreferenceKey: PreferenceKey {
     }
 }
 
+struct BoardDropPlaceholderFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
 struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [TaskItem]
@@ -78,6 +88,9 @@ struct BoardColumnView: View {
     let onDragEnded: (CGPoint) -> Void
     var onOpenTask: (TaskItem) -> Void = { _ in }
     var onToggleTask: (TaskItem) -> Void = { _ in }
+    let draggedTask: TaskItem?
+    let targetPlaceholderIndex: Int?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var dragCoordinator: BoardDragCoordinator
     @State private var taskFrames: [UUID: CGRect] = [:]
 
@@ -91,6 +104,8 @@ struct BoardColumnView: View {
         onDragEnded: @escaping (CGPoint) -> Void,
         onOpenTask: @escaping (TaskItem) -> Void = { _ in },
         onToggleTask: @escaping (TaskItem) -> Void = { _ in },
+        draggedTask: TaskItem? = nil,
+        targetPlaceholderIndex: Int? = nil,
         dragCoordinator: BoardDragCoordinator
     ) {
         self.column = column
@@ -102,6 +117,8 @@ struct BoardColumnView: View {
         self.onDragEnded = onDragEnded
         self.onOpenTask = onOpenTask
         self.onToggleTask = onToggleTask
+        self.draggedTask = draggedTask
+        self.targetPlaceholderIndex = targetPlaceholderIndex
         _dragCoordinator = ObservedObject(wrappedValue: dragCoordinator)
     }
 
@@ -138,9 +155,16 @@ struct BoardColumnView: View {
 
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 7) {
-                    ForEach(tasks) { task in
+                    ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
+                        if targetPlaceholderIndex == index, let draggedTask {
+                            dropPlaceholder(for: draggedTask)
+                        }
                         BoardTaskCard(task: task) { onToggleTask(task) }
                             .opacity(BoardDragPresentation.sourceOpacity(isActiveSource: dragCoordinator.taskID == task.id))
+                            .animation(
+                                placeholderAnimation,
+                                value: dragCoordinator.taskID == task.id
+                            )
                             .contentShape(Rectangle())
                             .background {
                                 GeometryReader { geometry in
@@ -153,7 +177,11 @@ struct BoardColumnView: View {
                             .gesture(dragGesture(for: task))
                             .onTapGesture { onOpenTask(task) }
                     }
+                    if targetPlaceholderIndex == tasks.count, let draggedTask {
+                        dropPlaceholder(for: draggedTask)
+                    }
                 }
+                .animation(placeholderAnimation, value: targetPlaceholderIndex)
             }
 
             Button(action: onAddTask) {
@@ -190,6 +218,42 @@ struct BoardColumnView: View {
                     lineWidth: 2
                 )
         )
+        .animation(
+            placeholderAnimation,
+            value: dragCoordinator.taskID != nil && dragCoordinator.targetColumnID == column.id
+        )
+    }
+
+    private var placeholderAnimation: Animation {
+        reduceMotion
+            ? .linear(duration: 0.08)
+            : .easeOut(duration: BoardDragPresentation.liftDuration)
+    }
+
+    private var placeholderTransition: AnyTransition {
+        reduceMotion
+            ? .opacity
+            : .opacity.combined(with: .scale(scale: 0.96, anchor: .top))
+    }
+
+    private func dropPlaceholder(for task: TaskItem) -> some View {
+        BoardTaskCard(task: task)
+            .opacity(BoardDragPresentation.targetGhostOpacity)
+            .overlay(
+                RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius)
+                    .fill(TaskDesignTokens.acid.opacity(BoardDragPresentation.targetTintOpacity))
+            )
+            .background {
+                GeometryReader { geometry in
+                    Color.clear.preference(
+                        key: BoardDropPlaceholderFramePreferenceKey.self,
+                        value: [column.id: geometry.frame(in: .global)]
+                    )
+                }
+            }
+            .transition(placeholderTransition)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private func dragGesture(for task: TaskItem) -> some Gesture {
@@ -201,12 +265,15 @@ struct BoardColumnView: View {
                     y: value.startLocation.y - taskFrame.minY
                 )
                 if dragCoordinator.taskID == nil {
-                    dragCoordinator.begin(
-                        taskID: task.id,
-                        sourceColumnID: column.id,
-                        boardLocation: value.location,
-                        grabOffset: grabOffset
-                    )
+                    withAnimation(placeholderAnimation) {
+                        dragCoordinator.begin(
+                            taskID: task.id,
+                            sourceColumnID: column.id,
+                            boardLocation: value.location,
+                            sourceFrame: taskFrame,
+                            grabOffset: grabOffset
+                        )
+                    }
                 }
                 guard dragCoordinator.taskID == task.id else { return }
                 onDragChanged(value.location)
