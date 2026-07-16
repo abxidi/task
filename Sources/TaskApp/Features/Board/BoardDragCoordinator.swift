@@ -87,16 +87,8 @@ final class BoardDragCoordinator: ObservableObject {
         update(boardLocation: location, targetColumnID: targetColumnID)
     }
 
-    func finish() -> BoardDragMove? {
-        defer { cancel() }
-        guard let session, session.sourceColumnID != session.targetColumnID else {
-            return nil
-        }
-        return BoardDragMove(taskID: session.taskID, targetColumnID: session.targetColumnID)
-    }
-
     func settle(to destinationFrame: CGRect) {
-        guard let session, session.phase == .dragging else { return }
+        guard let session else { return }
         self.session = BoardDragSession(
             taskID: session.taskID,
             sourceColumnID: session.sourceColumnID,

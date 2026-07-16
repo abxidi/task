@@ -18,6 +18,10 @@ enum BoardDragPresentation {
         min(max(requested, 0), taskCount)
     }
 
+    static func insertionIndex<ID: Equatable>(itemID: ID, sortedIDs: [ID]) -> Int? {
+        sortedIDs.firstIndex(of: itemID)
+    }
+
     static func showsTargetPlaceholder(sourceColumnID: UUID, targetColumnID: UUID) -> Bool {
         sourceColumnID != targetColumnID
     }

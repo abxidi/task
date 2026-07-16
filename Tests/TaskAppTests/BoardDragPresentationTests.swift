@@ -25,6 +25,22 @@ final class BoardDragPresentationTests: XCTestCase {
         XCTAssertEqual(BoardDragPresentation.placeholderIndex(requested: 9, taskCount: 2), 2)
     }
 
+    func testInsertionIndexUsesTheFinalSortedPosition() {
+        XCTAssertEqual(
+            BoardDragPresentation.insertionIndex(
+                itemID: "dragged",
+                sortedIDs: ["first", "dragged", "last"]
+            ),
+            1
+        )
+        XCTAssertNil(
+            BoardDragPresentation.insertionIndex(
+                itemID: "missing",
+                sortedIDs: ["first", "last"]
+            )
+        )
+    }
+
     func testSourceLaneDoesNotRenderASecondPlaceholder() {
         let sourceColumnID = UUID()
 
@@ -128,12 +144,22 @@ final class BoardDragPresentationTests: XCTestCase {
     }
 
     @MainActor
-    func testTaskListDragStateExposesOneExternalCoordinatorForAllLanes() {
-        let dragState = TaskListBoardDragState()
-        let firstLaneCoordinator = dragState.coordinator
-        let secondLaneCoordinator = dragState.coordinator
+    func testSettlingCanRetargetToSourceAfterFailedMove() {
+        let sourceFrame = CGRect(x: 40, y: 50, width: 228, height: 92)
+        let coordinator = BoardDragCoordinator()
 
-        XCTAssertTrue(firstLaneCoordinator === secondLaneCoordinator)
+        coordinator.begin(
+            taskID: UUID(),
+            sourceColumnID: UUID(),
+            boardLocation: CGPoint(x: 100, y: 80),
+            sourceFrame: sourceFrame,
+            grabOffset: CGPoint(x: 30, y: 20)
+        )
+        coordinator.settle(to: CGRect(x: 420, y: 160, width: 228, height: 92))
+        coordinator.settle(to: sourceFrame)
+
+        XCTAssertEqual(coordinator.session?.phase, .settling)
+        XCTAssertEqual(coordinator.boardLocation, CGPoint(x: 70, y: 70))
     }
 
     func testCompletionDecisionCancelsWhenPointerIsOutsideAnyLane() {
@@ -224,34 +250,6 @@ final class BoardDragPresentationTests: XCTestCase {
                 grabOffset: .zero
             )
         )
-    }
-
-    @MainActor
-    func testFinishingDragMovesOnlyToAnotherLaneAndClearsSession() {
-        let sourceLaneID = UUID()
-        let targetLaneID = UUID()
-        let taskID = UUID()
-        let coordinator = BoardDragCoordinator()
-
-        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, boardLocation: .zero)
-        coordinator.update(boardLocation: CGPoint(x: 120, y: 80), targetColumnID: targetLaneID)
-
-        XCTAssertEqual(coordinator.finish(), BoardDragMove(taskID: taskID, targetColumnID: targetLaneID))
-        XCTAssertNil(coordinator.taskID)
-        XCTAssertNil(coordinator.sourceColumnID)
-        XCTAssertNil(coordinator.targetColumnID)
-        XCTAssertNil(coordinator.boardLocation)
-        XCTAssertNil(coordinator.session)
-
-        coordinator.begin(taskID: taskID, sourceColumnID: sourceLaneID, boardLocation: .zero)
-        coordinator.update(boardLocation: CGPoint(x: 80, y: 80), targetColumnID: sourceLaneID)
-
-        XCTAssertNil(coordinator.finish())
-        XCTAssertNil(coordinator.taskID)
-        XCTAssertNil(coordinator.sourceColumnID)
-        XCTAssertNil(coordinator.targetColumnID)
-        XCTAssertNil(coordinator.boardLocation)
-        XCTAssertNil(coordinator.session)
     }
 
     @MainActor

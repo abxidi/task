@@ -3,11 +3,6 @@ import SwiftUI
 import TaskDomain
 import TaskPersistence
 
-@MainActor
-final class TaskListBoardDragState: ObservableObject {
-    let coordinator = BoardDragCoordinator()
-}
-
 enum TaskListScope: String, CaseIterable, Identifiable {
     case today
     case nextSevenDays
@@ -31,6 +26,7 @@ struct TaskListScreen: View {
     var onCreateTask: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \TaskItem.createdAt) private var allTasks: [TaskItem]
     @Query(sort: \BoardColumn.order) private var boardColumns: [BoardColumn]
     @State private var scope: TaskListScope = .all
@@ -38,8 +34,11 @@ struct TaskListScreen: View {
     @State private var creatingInColumn: BoardColumn?
     @State private var renamingColumn: BoardColumn?
     @State private var renameText = ""
-    @StateObject private var dragState = TaskListBoardDragState()
+    @StateObject private var dragCoordinator = BoardDragCoordinator()
     @State private var columnFrames: [UUID: CGRect] = [:]
+    @State private var dropPlaceholderFrames: [UUID: CGRect] = [:]
+    @State private var settlementToken: UUID?
+    @State private var errorMessage: String?
 
     var body: some View {
         GeometryReader { geometry in
@@ -48,10 +47,11 @@ struct TaskListScreen: View {
                     dragOverlay(in: geometry)
                 }
                 .onPreferenceChange(BoardColumnFramePreferenceKey.self) { columnFrames = $0 }
+                .onPreferenceChange(BoardDropPlaceholderFramePreferenceKey.self) { dropPlaceholderFrames = $0 }
         }
         .onExitCommand {
-            guard dragState.coordinator.taskID != nil else { return }
-            dragState.coordinator.cancel()
+            guard dragCoordinator.taskID != nil else { return }
+            settleDrag(.cancel)
         }
         .overlay {
             if let task = editingTask {
@@ -66,6 +66,18 @@ struct TaskListScreen: View {
         }
         .sheet(item: $renamingColumn) { lane in
             renameSheet(for: lane)
+        }
+        .alert("操作失败", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "")
+        }
+        .onDisappear {
+            settlementToken = nil
+            dragCoordinator.cancel()
         }
     }
 
@@ -103,7 +115,9 @@ struct TaskListScreen: View {
                                 onDragEnded: { finishDrag(at: $0) },
                                 onOpenTask: { editingTask = $0 },
                                 onToggleTask: toggle,
-                                dragCoordinator: dragState.coordinator
+                                draggedTask: draggedTask,
+                                targetPlaceholderIndex: targetPlaceholderIndex(for: lane),
+                                dragCoordinator: dragCoordinator
                             )
                         }
                     }
@@ -189,12 +203,7 @@ struct TaskListScreen: View {
             filtered = allTasks.filter { $0.isCompleted && $0.project == nil }
         }
 
-        return filtered.sorted {
-            TaskSort.priority(
-                TaskSortValue(id: $0.id.uuidString, urgency: $0.urgency, importance: $0.importance, dueAt: $0.dueAt, createdAt: $0.createdAt),
-                TaskSortValue(id: $1.id.uuidString, urgency: $1.urgency, importance: $1.importance, dueAt: $1.dueAt, createdAt: $1.createdAt)
-            )
-        }
+        return filtered.sorted(by: sortsByPriority)
     }
 
     private func tasks(in lane: BoardColumn) -> [TaskItem] {
@@ -203,28 +212,134 @@ struct TaskListScreen: View {
         }
     }
 
-    private func move(_ taskID: UUID, to lane: BoardColumn) {
-        guard let task = allTasks.first(where: { $0.id == taskID }) else { return }
-        guard task.boardColumn?.id != lane.id else { return }
-        try? BoardWorkflowService(context: modelContext).move(task, to: lane)
+    private var draggedTask: TaskItem? {
+        guard let taskID = dragCoordinator.taskID else { return nil }
+        return allTasks.first { $0.id == taskID }
+    }
+
+    private func targetPlaceholderIndex(for lane: BoardColumn) -> Int? {
+        guard
+            let session = dragCoordinator.session,
+            session.targetColumnID == lane.id,
+            BoardDragPresentation.showsTargetPlaceholder(
+                sourceColumnID: session.sourceColumnID,
+                targetColumnID: session.targetColumnID
+            ),
+            let draggedTask
+        else {
+            return nil
+        }
+        let finalTasks = (tasks(in: lane).filter { $0.id != draggedTask.id } + [draggedTask])
+            .sorted(by: sortsByPriority)
+        return BoardDragPresentation.insertionIndex(
+            itemID: draggedTask.id,
+            sortedIDs: finalTasks.map(\.id)
+        )
+    }
+
+    private func sortsByPriority(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
+        TaskSort.priority(
+            TaskSortValue(id: lhs.id.uuidString, urgency: lhs.urgency, importance: lhs.importance, dueAt: lhs.dueAt, createdAt: lhs.createdAt),
+            TaskSortValue(id: rhs.id.uuidString, urgency: rhs.urgency, importance: rhs.importance, dueAt: rhs.dueAt, createdAt: rhs.createdAt)
+        )
+    }
+
+    @discardableResult
+    private func move(_ taskID: UUID, to lane: BoardColumn) -> Bool {
+        guard let task = allTasks.first(where: { $0.id == taskID }) else { return false }
+        guard task.boardColumn?.id != lane.id else { return true }
+        do {
+            try BoardWorkflowService(context: modelContext).move(task, to: lane)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
     }
 
     private func updateDrag(at boardLocation: CGPoint) {
-        let coordinator = dragState.coordinator
-        guard let sourceColumnID = coordinator.sourceColumnID else { return }
-        let targetColumnID = columnID(at: boardLocation) ?? coordinator.targetColumnID ?? sourceColumnID
-        coordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
+        guard let sourceColumnID = dragCoordinator.sourceColumnID else { return }
+        let targetColumnID = columnID(at: boardLocation) ?? dragCoordinator.targetColumnID ?? sourceColumnID
+        dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
     }
 
     private func finishDrag(at boardLocation: CGPoint) {
-        let coordinator = dragState.coordinator
-        guard let targetColumnID = columnID(at: boardLocation) else {
-            coordinator.cancel()
+        let targetColumnID = columnID(at: boardLocation)
+        if let targetColumnID {
+            dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
+        }
+        settleDrag(BoardDragPresentation.completionDecision(
+            taskID: dragCoordinator.taskID,
+            sourceColumnID: dragCoordinator.sourceColumnID,
+            targetColumnID: targetColumnID
+        ))
+    }
+
+    private func settleDrag(_ decision: BoardDragCompletionDecision) {
+        guard let session = dragCoordinator.session else { return }
+        let token = UUID()
+        settlementToken = token
+
+        guard !reduceMotion else {
+            completeDrag(decision, taskID: session.taskID, token: token)
             return
         }
-        coordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
-        if let dragMove = coordinator.finish(), let lane = lanes.first(where: { $0.id == dragMove.targetColumnID }) {
-            move(dragMove.taskID, to: lane)
+
+        let destinationFrame: CGRect
+        if case .move(let move) = decision {
+            destinationFrame = dropPlaceholderFrames[move.targetColumnID]
+                ?? columnFrames[move.targetColumnID]
+                ?? session.sourceFrame
+        } else {
+            destinationFrame = session.sourceFrame
+        }
+
+        withAnimation(.easeOut(duration: BoardDragPresentation.dropDuration)) {
+            dragCoordinator.settle(to: destinationFrame)
+        } completion: {
+            completeDrag(decision, taskID: session.taskID, token: token)
+        }
+    }
+
+    private func completeDrag(_ decision: BoardDragCompletionDecision, taskID: UUID, token: UUID) {
+        guard settlementToken == token, dragCoordinator.taskID == taskID else { return }
+
+        switch decision {
+        case .move(let dragMove):
+            guard let lane = lanes.first(where: { $0.id == dragMove.targetColumnID }) else {
+                returnDragToSource(taskID: taskID)
+                return
+            }
+            guard move(dragMove.taskID, to: lane) else {
+                returnDragToSource(taskID: taskID)
+                return
+            }
+            finishDragPresentation()
+        case .cancel, .noMove:
+            finishDragPresentation()
+        }
+    }
+
+    private func returnDragToSource(taskID: UUID) {
+        guard let session = dragCoordinator.session, session.taskID == taskID else { return }
+        let token = UUID()
+        settlementToken = token
+        guard !reduceMotion else {
+            finishDragPresentation()
+            return
+        }
+        withAnimation(.easeOut(duration: BoardDragPresentation.dropDuration)) {
+            dragCoordinator.settle(to: session.sourceFrame)
+        } completion: {
+            guard settlementToken == token, dragCoordinator.taskID == taskID else { return }
+            finishDragPresentation()
+        }
+    }
+
+    private func finishDragPresentation() {
+        settlementToken = nil
+        withAnimation(.linear(duration: 0.08)) {
+            dragCoordinator.complete()
         }
     }
 
@@ -235,7 +350,7 @@ struct TaskListScreen: View {
     @ViewBuilder
     private func dragOverlay(in geometry: GeometryProxy) -> some View {
         if
-            let session = dragState.coordinator.session,
+            let session = dragCoordinator.session,
             let task = allTasks.first(where: { $0.id == session.taskID })
         {
             let offset = BoardDragPresentation.overlayOffset(
@@ -244,9 +359,27 @@ struct TaskListScreen: View {
                 in: geometry.frame(in: .global)
             )
             BoardTaskCard(task: task)
-                .frame(width: 248, alignment: .leading)
+                .frame(width: max(session.sourceFrame.width, 1), alignment: .leading)
                 .offset(x: offset.width, y: offset.height)
-                .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
+                .scaleEffect(
+                    !reduceMotion && session.phase == .dragging ? BoardDragPresentation.liftedScale : 1,
+                    anchor: .topLeading
+                )
+                .shadow(
+                    color: .black.opacity(session.phase == .dragging ? 0.18 : 0.08),
+                    radius: session.phase == .dragging ? 12 : 3,
+                    y: session.phase == .dragging ? 6 : 1
+                )
+                .animation(
+                    .easeOut(duration: BoardDragPresentation.liftDuration),
+                    value: session.phase
+                )
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .opacity.combined(with: .scale(scale: 0.98, anchor: .topLeading))
+                )
+                .zIndex(1_000)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }

@@ -8,6 +8,7 @@ struct ProjectBoardScreen: View {
     var onCreateTask: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(filter: #Predicate<Project> { !$0.isArchived }, sort: \Project.createdAt)
     private var projects: [Project]
     @Query(sort: \TaskItem.createdAt) private var allTasks: [TaskItem]
@@ -23,6 +24,8 @@ struct ProjectBoardScreen: View {
     @State private var rangeDays = 7
     @StateObject private var dragCoordinator = BoardDragCoordinator()
     @State private var columnFrames: [UUID: CGRect] = [:]
+    @State private var dropPlaceholderFrames: [UUID: CGRect] = [:]
+    @State private var settlementToken: UUID?
 
     var body: some View {
         GeometryReader { geometry in
@@ -31,6 +34,7 @@ struct ProjectBoardScreen: View {
                     dragOverlay(in: geometry)
                 }
                 .onPreferenceChange(BoardColumnFramePreferenceKey.self) { columnFrames = $0 }
+                .onPreferenceChange(BoardDropPlaceholderFramePreferenceKey.self) { dropPlaceholderFrames = $0 }
         }
         .alert("操作失败", isPresented: Binding(
             get: { errorMessage != nil },
@@ -90,7 +94,11 @@ struct ProjectBoardScreen: View {
         }
         .onExitCommand {
             guard dragCoordinator.taskID != nil else { return }
-            cancelDrag()
+            settleDrag(.cancel, in: selectedProject)
+        }
+        .onDisappear {
+            settlementToken = nil
+            dragCoordinator.cancel()
         }
     }
 
@@ -176,6 +184,8 @@ struct ProjectBoardScreen: View {
                                         },
                                         onDragChanged: { updateDrag(at: $0) },
                                         onDragEnded: { finishDrag(at: $0, in: project) },
+                                        draggedTask: draggedTask,
+                                        targetPlaceholderIndex: targetPlaceholderIndex(for: column, project: project),
                                         dragCoordinator: dragCoordinator
                                     )
                                 }
@@ -262,13 +272,41 @@ struct ProjectBoardScreen: View {
         PlanMetricsCalculator.quadrantDistribution(tasks: metricsTasks(for: project))
     }
 
-    private func move(_ taskID: UUID, to column: BoardColumn, project: Project) {
-        guard let task = projectTasks(project).first(where: { $0.id == taskID }) else { return }
-        guard task.boardColumn?.id != column.id else { return }
+    private var draggedTask: TaskItem? {
+        guard let taskID = dragCoordinator.taskID else { return nil }
+        return allTasks.first { $0.id == taskID }
+    }
+
+    private func targetPlaceholderIndex(for column: BoardColumn, project: Project) -> Int? {
+        guard
+            let session = dragCoordinator.session,
+            session.targetColumnID == column.id,
+            BoardDragPresentation.showsTargetPlaceholder(
+                sourceColumnID: session.sourceColumnID,
+                targetColumnID: session.targetColumnID
+            ),
+            let draggedTask
+        else {
+            return nil
+        }
+        let finalTasks = (tasks(in: column, project: project).filter { $0.id != draggedTask.id } + [draggedTask])
+            .sorted { $0.manualOrder < $1.manualOrder }
+        return BoardDragPresentation.insertionIndex(
+            itemID: draggedTask.id,
+            sortedIDs: finalTasks.map(\.id)
+        )
+    }
+
+    @discardableResult
+    private func move(_ taskID: UUID, to column: BoardColumn, project: Project) -> Bool {
+        guard let task = projectTasks(project).first(where: { $0.id == taskID }) else { return false }
+        guard task.boardColumn?.id != column.id else { return true }
         do {
             try BoardWorkflowService(context: modelContext).move(task, to: column)
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -283,28 +321,84 @@ struct ProjectBoardScreen: View {
         if let targetColumnID {
             dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
         }
-        switch BoardDragPresentation.completionDecision(
+        settleDrag(BoardDragPresentation.completionDecision(
             taskID: dragCoordinator.taskID,
             sourceColumnID: dragCoordinator.sourceColumnID,
             targetColumnID: targetColumnID
-        ) {
-        case .cancel:
-            dragCoordinator.cancel()
-        case .noMove:
-            _ = dragCoordinator.finish()
-        case .move(let dragMove):
-            guard
-                dragCoordinator.finish() == dragMove,
-                let targetColumn = sortedColumns(project).first(where: { $0.id == dragMove.targetColumnID })
-            else {
-                return
-            }
-            move(dragMove.taskID, to: targetColumn, project: project)
+        ), in: project)
+    }
+
+    private func settleDrag(_ decision: BoardDragCompletionDecision, in project: Project?) {
+        guard let session = dragCoordinator.session else { return }
+        let token = UUID()
+        settlementToken = token
+
+        guard !reduceMotion else {
+            completeDrag(decision, taskID: session.taskID, token: token, project: project)
+            return
+        }
+
+        let destinationFrame: CGRect
+        if case .move(let move) = decision {
+            destinationFrame = dropPlaceholderFrames[move.targetColumnID]
+                ?? columnFrames[move.targetColumnID]
+                ?? session.sourceFrame
+        } else {
+            destinationFrame = session.sourceFrame
+        }
+
+        withAnimation(.easeOut(duration: BoardDragPresentation.dropDuration)) {
+            dragCoordinator.settle(to: destinationFrame)
+        } completion: {
+            completeDrag(decision, taskID: session.taskID, token: token, project: project)
         }
     }
 
-    private func cancelDrag() {
-        dragCoordinator.cancel()
+    private func completeDrag(
+        _ decision: BoardDragCompletionDecision,
+        taskID: UUID,
+        token: UUID,
+        project: Project?
+    ) {
+        guard settlementToken == token, dragCoordinator.taskID == taskID else { return }
+
+        switch decision {
+        case .move(let dragMove):
+            guard
+                let project,
+                let targetColumn = sortedColumns(project).first(where: { $0.id == dragMove.targetColumnID }),
+                move(dragMove.taskID, to: targetColumn, project: project)
+            else {
+                returnDragToSource(taskID: taskID)
+                return
+            }
+            finishDragPresentation()
+        case .cancel, .noMove:
+            finishDragPresentation()
+        }
+    }
+
+    private func returnDragToSource(taskID: UUID) {
+        guard let session = dragCoordinator.session, session.taskID == taskID else { return }
+        let token = UUID()
+        settlementToken = token
+        guard !reduceMotion else {
+            finishDragPresentation()
+            return
+        }
+        withAnimation(.easeOut(duration: BoardDragPresentation.dropDuration)) {
+            dragCoordinator.settle(to: session.sourceFrame)
+        } completion: {
+            guard settlementToken == token, dragCoordinator.taskID == taskID else { return }
+            finishDragPresentation()
+        }
+    }
+
+    private func finishDragPresentation() {
+        settlementToken = nil
+        withAnimation(.linear(duration: 0.08)) {
+            dragCoordinator.complete()
+        }
     }
 
     private func columnID(at boardLocation: CGPoint) -> UUID? {
@@ -324,9 +418,27 @@ struct ProjectBoardScreen: View {
                 in: globalFrame
             )
             BoardTaskCard(task: task)
-                .frame(width: 248, alignment: .leading)
+                .frame(width: max(session.sourceFrame.width, 1), alignment: .leading)
                 .offset(x: offset.width, y: offset.height)
-                .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
+                .scaleEffect(
+                    !reduceMotion && session.phase == .dragging ? BoardDragPresentation.liftedScale : 1,
+                    anchor: .topLeading
+                )
+                .shadow(
+                    color: .black.opacity(session.phase == .dragging ? 0.18 : 0.08),
+                    radius: session.phase == .dragging ? 12 : 3,
+                    y: session.phase == .dragging ? 6 : 1
+                )
+                .animation(
+                    .easeOut(duration: BoardDragPresentation.liftDuration),
+                    value: session.phase
+                )
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .opacity.combined(with: .scale(scale: 0.98, anchor: .topLeading))
+                )
+                .zIndex(1_000)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }
