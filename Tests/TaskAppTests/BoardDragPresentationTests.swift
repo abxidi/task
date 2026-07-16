@@ -26,6 +26,41 @@ final class BoardDragPresentationTests: XCTestCase {
         )
     }
 
+    @MainActor
+    func testDragSessionRetainsGrabOffsetAndCalculatesItsTopLeadingOverlayPosition() {
+        let sourceLaneID = UUID()
+        let taskID = UUID()
+        let coordinator = BoardDragCoordinator()
+        let pointerLocation = CGPoint(x: 420, y: 310)
+        let grabOffset = CGPoint(x: 68, y: 24)
+
+        coordinator.begin(
+            taskID: taskID,
+            sourceColumnID: sourceLaneID,
+            boardLocation: pointerLocation,
+            grabOffset: grabOffset
+        )
+
+        XCTAssertEqual(coordinator.session?.grabOffset, grabOffset)
+        XCTAssertEqual(
+            BoardDragPresentation.overlayOffset(
+                for: coordinator.session!.boardLocation,
+                grabOffset: coordinator.session!.grabOffset,
+                in: CGRect(x: 100, y: 80, width: 800, height: 600)
+            ),
+            CGSize(width: 252, height: 206)
+        )
+    }
+
+    @MainActor
+    func testTaskListDragStateExposesOneExternalCoordinatorForAllLanes() {
+        let dragState = TaskListBoardDragState()
+        let firstLaneCoordinator = dragState.coordinator
+        let secondLaneCoordinator = dragState.coordinator
+
+        XCTAssertTrue(firstLaneCoordinator === secondLaneCoordinator)
+    }
+
     func testCompletionDecisionCancelsWhenPointerIsOutsideAnyLane() {
         XCTAssertEqual(
             BoardDragPresentation.completionDecision(
@@ -85,7 +120,8 @@ final class BoardDragPresentationTests: XCTestCase {
                 taskID: taskID,
                 sourceColumnID: sourceLaneID,
                 targetColumnID: sourceLaneID,
-                boardLocation: boardLocation
+                boardLocation: boardLocation,
+                grabOffset: .zero
             )
         )
     }
@@ -109,7 +145,8 @@ final class BoardDragPresentationTests: XCTestCase {
                 taskID: taskID,
                 sourceColumnID: sourceLaneID,
                 targetColumnID: targetLaneID,
-                boardLocation: boardLocation
+                boardLocation: boardLocation,
+                grabOffset: .zero
             )
         )
     }

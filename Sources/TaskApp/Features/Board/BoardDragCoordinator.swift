@@ -13,6 +13,8 @@ struct BoardDragSession: Equatable {
 
     /// Pointer location expressed in the board's coordinate space.
     let boardLocation: CGPoint
+    /// Pointer location relative to the dragged card's top-leading corner.
+    let grabOffset: CGPoint
 }
 
 @MainActor
@@ -26,12 +28,18 @@ final class BoardDragCoordinator: ObservableObject {
     /// Pointer location expressed in the board's coordinate space.
     var boardLocation: CGPoint? { session?.boardLocation }
 
-    func begin(taskID: UUID, sourceColumnID: UUID, boardLocation: CGPoint) {
+    func begin(
+        taskID: UUID,
+        sourceColumnID: UUID,
+        boardLocation: CGPoint,
+        grabOffset: CGPoint = .zero
+    ) {
         session = BoardDragSession(
             taskID: taskID,
             sourceColumnID: sourceColumnID,
             targetColumnID: sourceColumnID,
-            boardLocation: boardLocation
+            boardLocation: boardLocation,
+            grabOffset: grabOffset
         )
     }
 
@@ -42,7 +50,8 @@ final class BoardDragCoordinator: ObservableObject {
             taskID: session.taskID,
             sourceColumnID: session.sourceColumnID,
             targetColumnID: targetColumnID,
-            boardLocation: boardLocation
+            boardLocation: boardLocation,
+            grabOffset: session.grabOffset
         )
     }
 

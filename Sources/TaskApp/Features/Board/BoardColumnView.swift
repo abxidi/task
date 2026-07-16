@@ -57,39 +57,17 @@ struct BoardTaskFramePreferenceKey: PreferenceKey {
     }
 }
 
-final class BoardLegacyDragRegistry {
-    static let shared = BoardLegacyDragRegistry()
-
-    private var frames: [UUID: CGRect] = [:]
-    private var dropHandlers: [UUID: (UUID) -> Void] = [:]
-
-    func register(columnID: UUID, frame: CGRect, onDropTaskID: @escaping (UUID) -> Void) {
-        frames[columnID] = frame
-        dropHandlers[columnID] = onDropTaskID
-    }
-
-    func columnID(at boardLocation: CGPoint) -> UUID? {
-        frames.first { $0.value.contains(boardLocation) }?.key
-    }
-
-    func move(_ taskID: UUID, to columnID: UUID) {
-        dropHandlers[columnID]?(taskID)
-    }
-}
-
 struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [TaskItem]
     let onAddTask: () -> Void
     let onRename: () -> Void
     let onArchive: () -> Void
-    let onDragChanged: (CGPoint, CGPoint) -> Void
+    let onDragChanged: (CGPoint) -> Void
     let onDragEnded: (CGPoint) -> Void
     var onOpenTask: (TaskItem) -> Void = { _ in }
     var onToggleTask: (TaskItem) -> Void = { _ in }
     @ObservedObject var dragCoordinator: BoardDragCoordinator
-    private let legacyDragRegistry: BoardLegacyDragRegistry?
-    private let legacyOnDropTaskID: ((UUID) -> Void)?
     @State private var taskFrames: [UUID: CGRect] = [:]
 
     init(
@@ -98,13 +76,11 @@ struct BoardColumnView: View {
         onAddTask: @escaping () -> Void,
         onRename: @escaping () -> Void,
         onArchive: @escaping () -> Void,
-        onDragChanged: @escaping (CGPoint, CGPoint) -> Void,
+        onDragChanged: @escaping (CGPoint) -> Void,
         onDragEnded: @escaping (CGPoint) -> Void,
         onOpenTask: @escaping (TaskItem) -> Void = { _ in },
         onToggleTask: @escaping (TaskItem) -> Void = { _ in },
-        dragCoordinator: BoardDragCoordinator,
-        legacyDragRegistry: BoardLegacyDragRegistry? = nil,
-        legacyOnDropTaskID: ((UUID) -> Void)? = nil
+        dragCoordinator: BoardDragCoordinator
     ) {
         self.column = column
         self.tasks = tasks
@@ -116,52 +92,6 @@ struct BoardColumnView: View {
         self.onOpenTask = onOpenTask
         self.onToggleTask = onToggleTask
         _dragCoordinator = ObservedObject(wrappedValue: dragCoordinator)
-        self.legacyDragRegistry = legacyDragRegistry
-        self.legacyOnDropTaskID = legacyOnDropTaskID
-    }
-
-    init(
-        column: BoardColumn,
-        tasks: [TaskItem],
-        onDropTaskID: @escaping (UUID) -> Void,
-        onAddTask: @escaping () -> Void,
-        onRename: @escaping () -> Void,
-        onArchive: @escaping () -> Void,
-        onOpenTask: @escaping (TaskItem) -> Void = { _ in },
-        onToggleTask: @escaping (TaskItem) -> Void = { _ in },
-        draggingTaskID: Binding<UUID?>
-    ) {
-        let coordinator = BoardDragCoordinator()
-        let registry = BoardLegacyDragRegistry.shared
-        self.init(
-            column: column,
-            tasks: tasks,
-            onAddTask: onAddTask,
-            onRename: onRename,
-            onArchive: onArchive,
-            onDragChanged: { boardLocation, _ in
-                guard let targetColumnID = registry.columnID(at: boardLocation) else { return }
-                coordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
-                draggingTaskID.wrappedValue = coordinator.taskID
-            },
-            onDragEnded: { boardLocation in
-                guard let targetColumnID = registry.columnID(at: boardLocation) else {
-                    coordinator.cancel()
-                    draggingTaskID.wrappedValue = nil
-                    return
-                }
-                coordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
-                if let dragMove = coordinator.finish() {
-                    registry.move(dragMove.taskID, to: dragMove.targetColumnID)
-                }
-                draggingTaskID.wrappedValue = nil
-            },
-            onOpenTask: onOpenTask,
-            onToggleTask: onToggleTask,
-            dragCoordinator: coordinator,
-            legacyDragRegistry: registry,
-            legacyOnDropTaskID: onDropTaskID
-        )
     }
 
     var body: some View {
@@ -239,16 +169,6 @@ struct BoardColumnView: View {
                 )
             }
         }
-        .onPreferenceChange(BoardColumnFramePreferenceKey.self) { frames in
-            guard
-                let legacyDragRegistry,
-                let legacyOnDropTaskID,
-                let frame = frames[column.id]
-            else {
-                return
-            }
-            legacyDragRegistry.register(columnID: column.id, frame: frame, onDropTaskID: legacyOnDropTaskID)
-        }
         .onPreferenceChange(BoardTaskFramePreferenceKey.self) { taskFrames = $0 }
         .overlay(
             RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius)
@@ -273,11 +193,12 @@ struct BoardColumnView: View {
                     dragCoordinator.begin(
                         taskID: task.id,
                         sourceColumnID: column.id,
-                        boardLocation: value.location
+                        boardLocation: value.location,
+                        grabOffset: grabOffset
                     )
                 }
                 guard dragCoordinator.taskID == task.id else { return }
-                onDragChanged(value.location, grabOffset)
+                onDragChanged(value.location)
             }
             .onEnded { value in
                 guard dragCoordinator.taskID == task.id else { return }

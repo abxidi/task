@@ -23,7 +23,6 @@ struct ProjectBoardScreen: View {
     @State private var rangeDays = 7
     @StateObject private var dragCoordinator = BoardDragCoordinator()
     @State private var columnFrames: [UUID: CGRect] = [:]
-    @State private var dragGrabOffset = CGPoint.zero
 
     var body: some View {
         GeometryReader { geometry in
@@ -175,7 +174,7 @@ struct ProjectBoardScreen: View {
                                         onArchive: {
                                             try? ProjectRepository(context: modelContext).archiveColumn(column)
                                         },
-                                        onDragChanged: { updateDrag(at: $0, grabOffset: $1) },
+                                        onDragChanged: { updateDrag(at: $0) },
                                         onDragEnded: { finishDrag(at: $0, in: project) },
                                         dragCoordinator: dragCoordinator
                                     )
@@ -273,16 +272,13 @@ struct ProjectBoardScreen: View {
         }
     }
 
-    private func updateDrag(at boardLocation: CGPoint, grabOffset: CGPoint) {
+    private func updateDrag(at boardLocation: CGPoint) {
         guard let sourceColumnID = dragCoordinator.sourceColumnID else { return }
-        dragGrabOffset = grabOffset
         let targetColumnID = columnID(at: boardLocation) ?? dragCoordinator.targetColumnID ?? sourceColumnID
         dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
     }
 
     private func finishDrag(at boardLocation: CGPoint, in project: Project) {
-        defer { dragGrabOffset = .zero }
-
         let targetColumnID = columnID(at: boardLocation)
         if let targetColumnID {
             dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
@@ -309,7 +305,6 @@ struct ProjectBoardScreen: View {
 
     private func cancelDrag() {
         dragCoordinator.cancel()
-        dragGrabOffset = .zero
     }
 
     private func columnID(at boardLocation: CGPoint) -> UUID? {
@@ -325,7 +320,7 @@ struct ProjectBoardScreen: View {
             let globalFrame = geometry.frame(in: .global)
             let offset = BoardDragPresentation.overlayOffset(
                 for: session.boardLocation,
-                grabOffset: dragGrabOffset,
+                grabOffset: session.grabOffset,
                 in: globalFrame
             )
             BoardTaskCard(task: task)

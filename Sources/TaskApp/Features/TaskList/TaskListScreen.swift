@@ -3,6 +3,11 @@ import SwiftUI
 import TaskDomain
 import TaskPersistence
 
+@MainActor
+final class TaskListBoardDragState: ObservableObject {
+    let coordinator = BoardDragCoordinator()
+}
+
 enum TaskListScope: String, CaseIterable, Identifiable {
     case today
     case nextSevenDays
@@ -33,9 +38,38 @@ struct TaskListScreen: View {
     @State private var creatingInColumn: BoardColumn?
     @State private var renamingColumn: BoardColumn?
     @State private var renameText = ""
-    @State private var draggingTaskID: UUID?
+    @StateObject private var dragState = TaskListBoardDragState()
+    @State private var columnFrames: [UUID: CGRect] = [:]
 
     var body: some View {
+        GeometryReader { geometry in
+            taskListContent
+                .overlay(alignment: .topLeading) {
+                    dragOverlay(in: geometry)
+                }
+                .onPreferenceChange(BoardColumnFramePreferenceKey.self) { columnFrames = $0 }
+        }
+        .onExitCommand {
+            guard dragState.coordinator.taskID != nil else { return }
+            dragState.coordinator.cancel()
+        }
+        .overlay {
+            if let task = editingTask {
+                TaskEditorOverlay(mode: .edit(task)) {
+                    editingTask = nil
+                }
+            } else if let lane = creatingInColumn {
+                TaskEditorOverlay(mode: .createInColumn(lane.id)) {
+                    creatingInColumn = nil
+                }
+            }
+        }
+        .sheet(item: $renamingColumn) { lane in
+            renameSheet(for: lane)
+        }
+    }
+
+    private var taskListContent: some View {
         VStack(spacing: 0) {
             PageHeader(
                 eyebrow: "任务列表 · (scope.title)",
@@ -59,16 +93,17 @@ struct TaskListScreen: View {
                             BoardColumnView(
                                 column: lane,
                                 tasks: tasks(in: lane),
-                                onDropTaskID: { move($0, to: lane) },
                                 onAddTask: { creatingInColumn = lane },
                                 onRename: {
                                     renameText = lane.name
                                     renamingColumn = lane
                                 },
                                 onArchive: {},
+                                onDragChanged: { updateDrag(at: $0) },
+                                onDragEnded: { finishDrag(at: $0) },
                                 onOpenTask: { editingTask = $0 },
                                 onToggleTask: toggle,
-                                draggingTaskID: $draggingTaskID
+                                dragCoordinator: dragState.coordinator
                             )
                         }
                     }
@@ -85,37 +120,26 @@ struct TaskListScreen: View {
         .onChange(of: initialScope) { _, newValue in
             if let newValue { scope = newValue }
         }
-        .onExitCommand(perform: draggingTaskID == nil ? nil : { draggingTaskID = nil })
-        .overlay {
-            if let task = editingTask {
-                TaskEditorOverlay(mode: .edit(task)) {
-                    editingTask = nil
-                }
-            } else if let lane = creatingInColumn {
-                TaskEditorOverlay(mode: .createInColumn(lane.id)) {
-                    creatingInColumn = nil
+    }
+
+    private func renameSheet(for lane: BoardColumn) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("重命名泳道")
+                .font(TaskDesignTokens.pageTitleFont)
+            TextField("泳道名称", text: $renameText)
+                .textFieldStyle(.roundedBorder)
+            HStack {
+                TaskChromeButton(title: "取消") { renamingColumn = nil }
+                Spacer()
+                TaskChromeButton(title: "保存", style: .primary) {
+                    try? ProjectRepository(context: modelContext).renameColumn(lane, to: renameText)
+                    renamingColumn = nil
                 }
             }
         }
-        .sheet(item: $renamingColumn) { lane in
-            VStack(alignment: .leading, spacing: 16) {
-                Text("重命名泳道")
-                    .font(TaskDesignTokens.pageTitleFont)
-                TextField("泳道名称", text: $renameText)
-                    .textFieldStyle(.roundedBorder)
-                HStack {
-                    TaskChromeButton(title: "取消") { renamingColumn = nil }
-                    Spacer()
-                    TaskChromeButton(title: "保存", style: .primary) {
-                        try? ProjectRepository(context: modelContext).renameColumn(lane, to: renameText)
-                        renamingColumn = nil
-                    }
-                }
-            }
-            .padding(24)
-            .frame(width: 360)
-            .background(TaskDesignTokens.panel)
-        }
+        .padding(24)
+        .frame(width: 360)
+        .background(TaskDesignTokens.panel)
     }
 
     private var scopePicker: some View {
@@ -183,6 +207,49 @@ struct TaskListScreen: View {
         guard let task = allTasks.first(where: { $0.id == taskID }) else { return }
         guard task.boardColumn?.id != lane.id else { return }
         try? BoardWorkflowService(context: modelContext).move(task, to: lane)
+    }
+
+    private func updateDrag(at boardLocation: CGPoint) {
+        let coordinator = dragState.coordinator
+        guard let sourceColumnID = coordinator.sourceColumnID else { return }
+        let targetColumnID = columnID(at: boardLocation) ?? coordinator.targetColumnID ?? sourceColumnID
+        coordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
+    }
+
+    private func finishDrag(at boardLocation: CGPoint) {
+        let coordinator = dragState.coordinator
+        guard let targetColumnID = columnID(at: boardLocation) else {
+            coordinator.cancel()
+            return
+        }
+        coordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
+        if let dragMove = coordinator.finish(), let lane = lanes.first(where: { $0.id == dragMove.targetColumnID }) {
+            move(dragMove.taskID, to: lane)
+        }
+    }
+
+    private func columnID(at boardLocation: CGPoint) -> UUID? {
+        columnFrames.first { $0.value.contains(boardLocation) }?.key
+    }
+
+    @ViewBuilder
+    private func dragOverlay(in geometry: GeometryProxy) -> some View {
+        if
+            let session = dragState.coordinator.session,
+            let task = allTasks.first(where: { $0.id == session.taskID })
+        {
+            let offset = BoardDragPresentation.overlayOffset(
+                for: session.boardLocation,
+                grabOffset: session.grabOffset,
+                in: geometry.frame(in: .global)
+            )
+            BoardTaskCard(task: task)
+                .frame(width: 248, alignment: .leading)
+                .offset(x: offset.width, y: offset.height)
+                .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 
     private func toggle(_ task: TaskItem) {
