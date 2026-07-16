@@ -23,6 +23,7 @@ struct ProjectBoardScreen: View {
     @State private var rangeDays = 7
     @StateObject private var dragCoordinator = BoardDragCoordinator()
     @State private var columnFrames: [UUID: CGRect] = [:]
+    @State private var dragGrabOffset = CGPoint.zero
 
     var body: some View {
         GeometryReader { geometry in
@@ -90,7 +91,7 @@ struct ProjectBoardScreen: View {
         }
         .onExitCommand {
             guard dragCoordinator.taskID != nil else { return }
-            dragCoordinator.cancel()
+            cancelDrag()
         }
     }
 
@@ -174,7 +175,7 @@ struct ProjectBoardScreen: View {
                                         onArchive: {
                                             try? ProjectRepository(context: modelContext).archiveColumn(column)
                                         },
-                                        onDragChanged: updateDrag,
+                                        onDragChanged: { updateDrag(at: $0, grabOffset: $1) },
                                         onDragEnded: { finishDrag(at: $0, in: project) },
                                         dragCoordinator: dragCoordinator
                                     )
@@ -272,26 +273,43 @@ struct ProjectBoardScreen: View {
         }
     }
 
-    private func updateDrag(at boardLocation: CGPoint) {
+    private func updateDrag(at boardLocation: CGPoint, grabOffset: CGPoint) {
         guard let sourceColumnID = dragCoordinator.sourceColumnID else { return }
+        dragGrabOffset = grabOffset
         let targetColumnID = columnID(at: boardLocation) ?? dragCoordinator.targetColumnID ?? sourceColumnID
         dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
     }
 
     private func finishDrag(at boardLocation: CGPoint, in project: Project) {
-        guard let targetColumnID = columnID(at: boardLocation) else {
-            dragCoordinator.cancel()
-            return
-        }
+        defer { dragGrabOffset = .zero }
 
-        dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
-        guard
-            let dragMove = dragCoordinator.finish(),
-            let targetColumn = sortedColumns(project).first(where: { $0.id == dragMove.targetColumnID })
-        else {
-            return
+        let targetColumnID = columnID(at: boardLocation)
+        if let targetColumnID {
+            dragCoordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
         }
-        move(dragMove.taskID, to: targetColumn, project: project)
+        switch BoardDragPresentation.completionDecision(
+            taskID: dragCoordinator.taskID,
+            sourceColumnID: dragCoordinator.sourceColumnID,
+            targetColumnID: targetColumnID
+        ) {
+        case .cancel:
+            dragCoordinator.cancel()
+        case .noMove:
+            _ = dragCoordinator.finish()
+        case .move(let dragMove):
+            guard
+                dragCoordinator.finish() == dragMove,
+                let targetColumn = sortedColumns(project).first(where: { $0.id == dragMove.targetColumnID })
+            else {
+                return
+            }
+            move(dragMove.taskID, to: targetColumn, project: project)
+        }
+    }
+
+    private func cancelDrag() {
+        dragCoordinator.cancel()
+        dragGrabOffset = .zero
     }
 
     private func columnID(at boardLocation: CGPoint) -> UUID? {
@@ -305,12 +323,14 @@ struct ProjectBoardScreen: View {
             let task = allTasks.first(where: { $0.id == session.taskID })
         {
             let globalFrame = geometry.frame(in: .global)
+            let offset = BoardDragPresentation.overlayOffset(
+                for: session.boardLocation,
+                grabOffset: dragGrabOffset,
+                in: globalFrame
+            )
             BoardTaskCard(task: task)
                 .frame(width: 248, alignment: .leading)
-                .position(
-                    x: session.boardLocation.x - globalFrame.minX,
-                    y: session.boardLocation.y - globalFrame.minY
-                )
+                .offset(x: offset.width, y: offset.height)
                 .shadow(color: .black.opacity(0.16), radius: 8, y: 3)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)

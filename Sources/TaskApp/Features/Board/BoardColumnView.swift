@@ -8,9 +8,48 @@ enum BoardDragPresentation {
     static func sourceOpacity(isActiveSource: Bool) -> Double {
         isActiveSource ? placeholderOpacity : 1
     }
+
+    static func overlayOffset(
+        for pointerLocation: CGPoint,
+        grabOffset: CGPoint,
+        in overlayGlobalFrame: CGRect
+    ) -> CGSize {
+        CGSize(
+            width: pointerLocation.x - grabOffset.x - overlayGlobalFrame.minX,
+            height: pointerLocation.y - grabOffset.y - overlayGlobalFrame.minY
+        )
+    }
+
+    static func completionDecision(
+        taskID: UUID?,
+        sourceColumnID: UUID?,
+        targetColumnID: UUID?
+    ) -> BoardDragCompletionDecision {
+        guard let taskID, let sourceColumnID, let targetColumnID else {
+            return .cancel
+        }
+        guard sourceColumnID != targetColumnID else {
+            return .noMove
+        }
+        return .move(BoardDragMove(taskID: taskID, targetColumnID: targetColumnID))
+    }
+}
+
+enum BoardDragCompletionDecision: Equatable {
+    case cancel
+    case noMove
+    case move(BoardDragMove)
 }
 
 struct BoardColumnFramePreferenceKey: PreferenceKey {
+    static let defaultValue: [UUID: CGRect] = [:]
+
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
+struct BoardTaskFramePreferenceKey: PreferenceKey {
     static let defaultValue: [UUID: CGRect] = [:]
 
     static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
@@ -44,13 +83,14 @@ struct BoardColumnView: View {
     let onAddTask: () -> Void
     let onRename: () -> Void
     let onArchive: () -> Void
-    let onDragChanged: (CGPoint) -> Void
+    let onDragChanged: (CGPoint, CGPoint) -> Void
     let onDragEnded: (CGPoint) -> Void
     var onOpenTask: (TaskItem) -> Void = { _ in }
     var onToggleTask: (TaskItem) -> Void = { _ in }
     @ObservedObject var dragCoordinator: BoardDragCoordinator
     private let legacyDragRegistry: BoardLegacyDragRegistry?
     private let legacyOnDropTaskID: ((UUID) -> Void)?
+    @State private var taskFrames: [UUID: CGRect] = [:]
 
     init(
         column: BoardColumn,
@@ -58,7 +98,7 @@ struct BoardColumnView: View {
         onAddTask: @escaping () -> Void,
         onRename: @escaping () -> Void,
         onArchive: @escaping () -> Void,
-        onDragChanged: @escaping (CGPoint) -> Void,
+        onDragChanged: @escaping (CGPoint, CGPoint) -> Void,
         onDragEnded: @escaping (CGPoint) -> Void,
         onOpenTask: @escaping (TaskItem) -> Void = { _ in },
         onToggleTask: @escaping (TaskItem) -> Void = { _ in },
@@ -99,7 +139,7 @@ struct BoardColumnView: View {
             onAddTask: onAddTask,
             onRename: onRename,
             onArchive: onArchive,
-            onDragChanged: { boardLocation in
+            onDragChanged: { boardLocation, _ in
                 guard let targetColumnID = registry.columnID(at: boardLocation) else { return }
                 coordinator.update(boardLocation: boardLocation, targetColumnID: targetColumnID)
                 draggingTaskID.wrappedValue = coordinator.taskID
@@ -161,6 +201,14 @@ struct BoardColumnView: View {
                         BoardTaskCard(task: task) { onToggleTask(task) }
                             .opacity(BoardDragPresentation.sourceOpacity(isActiveSource: dragCoordinator.taskID == task.id))
                             .contentShape(Rectangle())
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(
+                                        key: BoardTaskFramePreferenceKey.self,
+                                        value: [task.id: geometry.frame(in: .global)]
+                                    )
+                                }
+                            }
                             .gesture(dragGesture(for: task))
                             .onTapGesture { onOpenTask(task) }
                     }
@@ -201,9 +249,10 @@ struct BoardColumnView: View {
             }
             legacyDragRegistry.register(columnID: column.id, frame: frame, onDropTaskID: legacyOnDropTaskID)
         }
+        .onPreferenceChange(BoardTaskFramePreferenceKey.self) { taskFrames = $0 }
         .overlay(
             RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius)
-                .stroke(
+                .strokeBorder(
                     dragCoordinator.taskID != nil && dragCoordinator.targetColumnID == column.id
                         ? TaskDesignTokens.acid
                         : Color.clear,
@@ -215,6 +264,11 @@ struct BoardColumnView: View {
     private func dragGesture(for task: TaskItem) -> some Gesture {
         DragGesture(minimumDistance: 3, coordinateSpace: .global)
             .onChanged { value in
+                guard let taskFrame = taskFrames[task.id] else { return }
+                let grabOffset = CGPoint(
+                    x: value.startLocation.x - taskFrame.minX,
+                    y: value.startLocation.y - taskFrame.minY
+                )
                 if dragCoordinator.taskID == nil {
                     dragCoordinator.begin(
                         taskID: task.id,
@@ -222,9 +276,11 @@ struct BoardColumnView: View {
                         boardLocation: value.location
                     )
                 }
-                onDragChanged(value.location)
+                guard dragCoordinator.taskID == task.id else { return }
+                onDragChanged(value.location, grabOffset)
             }
             .onEnded { value in
+                guard dragCoordinator.taskID == task.id else { return }
                 onDragEnded(value.location)
             }
     }

@@ -11,6 +11,61 @@ final class BoardDragPresentationTests: XCTestCase {
         XCTAssertEqual(BoardDragPresentation.sourceOpacity(isActiveSource: false), 1)
     }
 
+    func testOverlayOffsetPreservesGrabPointRelativeToTheCard() {
+        let pointerLocation = CGPoint(x: 420, y: 310)
+        let grabOffset = CGPoint(x: 68, y: 24)
+        let overlayGlobalFrame = CGRect(x: 100, y: 80, width: 800, height: 600)
+
+        XCTAssertEqual(
+            BoardDragPresentation.overlayOffset(
+                for: pointerLocation,
+                grabOffset: grabOffset,
+                in: overlayGlobalFrame
+            ),
+            CGSize(width: 252, height: 206)
+        )
+    }
+
+    func testCompletionDecisionCancelsWhenPointerIsOutsideAnyLane() {
+        XCTAssertEqual(
+            BoardDragPresentation.completionDecision(
+                taskID: UUID(),
+                sourceColumnID: UUID(),
+                targetColumnID: nil
+            ),
+            .cancel
+        )
+    }
+
+    func testCompletionDecisionDoesNotMoveWithinTheSourceLane() {
+        let taskID = UUID()
+        let sourceColumnID = UUID()
+
+        XCTAssertEqual(
+            BoardDragPresentation.completionDecision(
+                taskID: taskID,
+                sourceColumnID: sourceColumnID,
+                targetColumnID: sourceColumnID
+            ),
+            .noMove
+        )
+    }
+
+    func testCompletionDecisionProducesOneMoveAcrossLanes() {
+        let taskID = UUID()
+        let sourceColumnID = UUID()
+        let targetColumnID = UUID()
+
+        XCTAssertEqual(
+            BoardDragPresentation.completionDecision(
+                taskID: taskID,
+                sourceColumnID: sourceColumnID,
+                targetColumnID: targetColumnID
+            ),
+            .move(BoardDragMove(taskID: taskID, targetColumnID: targetColumnID))
+        )
+    }
+
     @MainActor
     func testBeginInitializesTargetAndBoardLocation() {
         let sourceLaneID = UUID()
