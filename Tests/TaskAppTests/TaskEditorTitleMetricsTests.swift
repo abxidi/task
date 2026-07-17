@@ -33,7 +33,7 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
     }
 
     func testAddedSubtasksAlignWithTheNewSubtaskIcon() {
-        XCTAssertEqual(TaskEditorSubtaskEntryStyle.listRowLeadingInset, 2)
+        XCTAssertEqual(TaskEditorSubtaskEntryStyle.listRowLeadingInset, 6)
     }
 
     func testPriorityEntryUsesNormalAndHighPriorityLabels() {

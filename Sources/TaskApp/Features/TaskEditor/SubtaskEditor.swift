@@ -107,5 +107,5 @@ enum TaskEditorSubtaskEntryStyle {
     static let iconSize: CGFloat = 12
     static let iconFrameSize: CGFloat = 18
     static let minimumHeight: CGFloat = 40
-    static let listRowLeadingInset: CGFloat = 2
+    static let listRowLeadingInset: CGFloat = 6
 }
