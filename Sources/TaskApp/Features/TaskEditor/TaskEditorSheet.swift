@@ -63,12 +63,20 @@ struct TaskEditorSheet: View {
                         HStack(spacing: 12) {
                             priorityEntry
 
-                            TextField("任务标题", text: $model.draft.title)
-                                .textFieldStyle(.plain)
-                                .font(TaskDesignTokens.sheetTitleFont)
-                                .foregroundStyle(TaskDesignTokens.ink)
-                                .focused($titleFocused)
-                                .frame(minHeight: TaskEditorTitleMetrics.minimumFieldHeight)
+                            ZStack(alignment: .leading) {
+                                if TaskEditorPlaceholder.isVisible(text: model.draft.title, isFocused: titleFocused) {
+                                    Text("任务标题")
+                                        .font(TaskDesignTokens.sheetTitleFont)
+                                        .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
+                                        .allowsHitTesting(false)
+                                }
+                                TextField("", text: $model.draft.title)
+                                    .textFieldStyle(.plain)
+                                    .font(TaskDesignTokens.sheetTitleFont)
+                                    .foregroundStyle(TaskDesignTokens.ink)
+                                    .focused($titleFocused)
+                                    .frame(minHeight: TaskEditorTitleMetrics.minimumFieldHeight)
+                            }
                         }
                         Rectangle()
                             .fill(TaskDesignTokens.line)
@@ -77,10 +85,10 @@ struct TaskEditorSheet: View {
                     .frame(width: TaskEditorLayout.titleContentWidth, alignment: .leading)
 
                     ZStack(alignment: .topLeading) {
-                        if model.draft.details.isEmpty {
+                        if TaskEditorPlaceholder.isVisible(text: model.draft.details, isFocused: descriptionFocused) {
                             Text("添加备注...")
                                 .font(.system(size: 15))
-                                .foregroundStyle(TaskDesignTokens.quiet)
+                                .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 13)
                                 .allowsHitTesting(false)
@@ -311,6 +319,14 @@ struct TaskEditorSheet: View {
 
 enum TaskEditorTitleMetrics {
     static let minimumFieldHeight: CGFloat = 44
+}
+
+enum TaskEditorPlaceholder {
+    static let opacity: Double = 0.55
+
+    static func isVisible(text: String, isFocused: Bool) -> Bool {
+        text.isEmpty && !isFocused
+    }
 }
 
 enum TaskEditorLayout {

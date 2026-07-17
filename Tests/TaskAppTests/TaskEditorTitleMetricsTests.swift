@@ -29,4 +29,14 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 0, importance: 0)), "正常")
         XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 2, importance: 3)), "高优")
     }
+
+    func testEditorPlaceholdersHideWhenTheirFieldReceivesFocus() {
+        XCTAssertTrue(TaskEditorPlaceholder.isVisible(text: "", isFocused: false))
+        XCTAssertFalse(TaskEditorPlaceholder.isVisible(text: "", isFocused: true))
+        XCTAssertFalse(TaskEditorPlaceholder.isVisible(text: "已输入", isFocused: false))
+    }
+
+    func testEditorPlaceholdersUseReducedEmphasis() {
+        XCTAssertLessThan(TaskEditorPlaceholder.opacity, 1)
+    }
 }

@@ -50,11 +50,16 @@ struct SubtaskEditor: View {
                         isAddingFirst = true
                         isNewFocused = true
                     } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 25, weight: .light))
-                            .foregroundStyle(TaskDesignTokens.quiet)
-                            .frame(maxWidth: .infinity, minHeight: TaskEditorLayout.emptySubtaskHeight)
-                            .contentShape(Rectangle())
+                        HStack(spacing: 8) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 19, weight: .medium))
+                            Text("添加一个子任务")
+                                .font(.system(size: 12))
+                        }
+                        .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
+                        .frame(maxWidth: .infinity, minHeight: TaskEditorLayout.emptySubtaskHeight, alignment: .leading)
+                        .padding(.horizontal, 10)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("添加子任务")
@@ -64,11 +69,19 @@ struct SubtaskEditor: View {
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(TaskDesignTokens.quiet)
                             .frame(width: 18, height: 18)
-                        TextField("添加一个子任务", text: $newTitle)
-                            .textFieldStyle(.plain)
-                            .font(.system(size: 12))
-                            .focused($isNewFocused)
-                            .onSubmit(addNew)
+                        ZStack(alignment: .leading) {
+                            if TaskEditorPlaceholder.isVisible(text: newTitle, isFocused: isNewFocused) {
+                                Text("添加一个子任务")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
+                                    .allowsHitTesting(false)
+                            }
+                            TextField("", text: $newTitle)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: 12))
+                                .focused($isNewFocused)
+                                .onSubmit(addNew)
+                        }
                     }
                     .padding(.horizontal, 10)
                     .frame(minHeight: 40)
