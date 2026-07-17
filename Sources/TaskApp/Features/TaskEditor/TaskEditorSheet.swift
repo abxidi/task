@@ -211,23 +211,10 @@ struct TaskEditorSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             TaskTagEditor(tagNames: $model.draft.tagNames)
 
-            HStack(spacing: 12) {
-                Text("任务日期")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(TaskDesignTokens.muted)
-                Toggle("", isOn: hasDueDate)
-                    .labelsHidden()
-                    .toggleStyle(.checkbox)
-                if model.draft.dueAt != nil {
-                    DatePicker("", selection: dueDate, displayedComponents: [.date, .hourAndMinute])
-                        .labelsHidden()
-                } else {
-                    Text("未设置")
-                        .font(.system(size: 12))
-                        .foregroundStyle(TaskDesignTokens.quiet)
-                }
-                Spacer()
-            }
+            TaskDateEditorRow(
+                dueAt: $model.draft.dueAt,
+                reminderAt: $model.draft.reminderAt
+            )
 
             HStack(spacing: 12) {
                 Text("完成状态")
@@ -246,20 +233,6 @@ struct TaskEditorSheet: View {
                 .help(model.draft.isCompleted ? "标记为未完成" : "标记为已完成")
             }
         }
-    }
-
-    private var hasDueDate: Binding<Bool> {
-        Binding(
-            get: { model.draft.dueAt != nil },
-            set: { model.draft.dueAt = $0 ? (model.draft.dueAt ?? .now) : nil }
-        )
-    }
-
-    private var dueDate: Binding<Date> {
-        Binding(
-            get: { model.draft.dueAt ?? .now },
-            set: { model.draft.dueAt = $0 }
-        )
     }
 
     private func scheduleAutoSave() {
