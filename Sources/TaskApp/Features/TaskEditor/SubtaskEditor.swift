@@ -11,41 +11,44 @@ struct SubtaskEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            VStack(spacing: 0) {
-                if !items.isEmpty {
-                    List {
-                        ForEach(Array(items.enumerated()), id: \.offset) { index, _ in
-                            HStack(spacing: 9) {
-                                Button {
-                                    onToggle(index)
-                                } label: {
-                                    Image(systemName: completion[index] ? "checkmark.square.fill" : "square")
-                                        .font(.system(size: 13))
-                                        .foregroundStyle(completion[index] ? TaskDesignTokens.success : TaskDesignTokens.quiet)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(completion[index] ? "标记为未完成" : "标记为已完成")
-
-                                TextField("子任务", text: binding(for: index))
-                                    .textFieldStyle(.plain)
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(Color(hex: 0x50544C))
-                                    .strikethrough(completion[index])
-                            }
-                            .frame(minHeight: 40)
-                            .listRowInsets(.init(top: 0, leading: TaskEditorSubtaskEntryStyle.listRowLeadingInset, bottom: 0, trailing: 10))
-                            .listRowSeparator(.visible)
-                            .listRowBackground(Color.clear)
+            List {
+                ForEach(Array(items.enumerated()), id: \.offset) { index, _ in
+                    HStack(spacing: 8) {
+                        Button {
+                            onToggle(index)
+                        } label: {
+                            Image(systemName: completion[index] ? "checkmark.square.fill" : "square")
+                                .font(.system(size: 13))
+                                .foregroundStyle(completion[index] ? TaskDesignTokens.success : TaskDesignTokens.quiet)
                         }
-                        .onMove(perform: onMove)
+                        .buttonStyle(.plain)
+                        .frame(
+                            width: TaskEditorSubtaskEntryStyle.iconFrameSize,
+                            height: TaskEditorSubtaskEntryStyle.iconFrameSize
+                        )
+                        .accessibilityLabel(completion[index] ? "标记为未完成" : "标记为已完成")
+
+                        TextField("子任务", text: binding(for: index))
+                            .textFieldStyle(.plain)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color(hex: 0x50544C))
+                            .strikethrough(completion[index])
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .frame(height: CGFloat(items.count) * 41)
+                    .frame(minHeight: TaskEditorSubtaskEntryStyle.minimumHeight)
+                    .listRowInsets(sharedRowInsets)
+                    .listRowSeparator(.visible)
+                    .listRowBackground(Color.clear)
                 }
+                .onMove(perform: onMove)
 
                 compactInputRow
+                    .listRowInsets(sharedRowInsets)
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .frame(height: CGFloat(items.count) * 41 + TaskEditorSubtaskEntryStyle.minimumHeight)
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
                     .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
@@ -59,6 +62,10 @@ struct SubtaskEditor: View {
             get: { items[index] },
             set: { items[index] = $0 }
         )
+    }
+
+    private var sharedRowInsets: EdgeInsets {
+        .init(top: 0, leading: TaskEditorSubtaskEntryStyle.listRowLeadingInset, bottom: 0, trailing: 10)
     }
 
     private var compactInputRow: some View {
@@ -85,7 +92,6 @@ struct SubtaskEditor: View {
                     .accessibilityLabel("添加子任务")
             }
         }
-        .padding(.horizontal, 10)
         .frame(minHeight: TaskEditorSubtaskEntryStyle.minimumHeight)
     }
 
@@ -103,9 +109,10 @@ struct SubtaskEditor: View {
 }
 
 enum TaskEditorSubtaskEntryStyle {
+    static let usesSharedListRows = true
     static let startsAsInput = true
     static let iconSize: CGFloat = 12
     static let iconFrameSize: CGFloat = 18
     static let minimumHeight: CGFloat = 40
-    static let listRowLeadingInset: CGFloat = 6
+    static let listRowLeadingInset: CGFloat = 10
 }
