@@ -8,7 +8,6 @@ struct SubtaskEditor: View {
     let onAdd: (String) -> Void
     @State private var newTitle = ""
     @FocusState private var isNewFocused: Bool
-    @State private var isAddingFirst = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -45,47 +44,7 @@ struct SubtaskEditor: View {
                     .frame(height: CGFloat(items.count) * 41)
                 }
 
-                if items.isEmpty && !isAddingFirst {
-                    Button {
-                        isAddingFirst = true
-                        isNewFocused = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "plus")
-                                .font(.system(size: 19, weight: .medium))
-                            Text("添加一个子任务")
-                                .font(.system(size: 12))
-                        }
-                        .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
-                        .frame(maxWidth: .infinity, minHeight: TaskEditorLayout.emptySubtaskHeight, alignment: .leading)
-                        .padding(.horizontal, 10)
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("添加子任务")
-                } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(TaskDesignTokens.quiet)
-                            .frame(width: 18, height: 18)
-                        ZStack(alignment: .leading) {
-                            if TaskEditorPlaceholder.isVisible(text: newTitle, isFocused: isNewFocused) {
-                                Text("添加一个子任务")
-                                    .font(.system(size: 12))
-                                    .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
-                                    .allowsHitTesting(false)
-                            }
-                            TextField("", text: $newTitle)
-                                .textFieldStyle(.plain)
-                                .font(.system(size: 12))
-                                .focused($isNewFocused)
-                                .onSubmit(addNew)
-                        }
-                    }
-                    .padding(.horizontal, 10)
-                    .frame(minHeight: 40)
-                }
+                compactInputRow
             }
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
@@ -102,17 +61,50 @@ struct SubtaskEditor: View {
         )
     }
 
+    private var compactInputRow: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "plus")
+                .font(.system(size: TaskEditorSubtaskEntryStyle.iconSize, weight: .semibold))
+                .foregroundStyle(TaskDesignTokens.quiet)
+                .frame(
+                    width: TaskEditorSubtaskEntryStyle.iconFrameSize,
+                    height: TaskEditorSubtaskEntryStyle.iconFrameSize
+                )
+            ZStack(alignment: .leading) {
+                if TaskEditorPlaceholder.isVisible(text: newTitle, isFocused: isNewFocused) {
+                    Text("添加一个子任务")
+                        .font(.system(size: 12))
+                        .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
+                        .allowsHitTesting(false)
+                }
+                TextField("", text: $newTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12))
+                    .focused($isNewFocused)
+                    .onSubmit(addNew)
+                    .accessibilityLabel("添加子任务")
+            }
+        }
+        .padding(.horizontal, 10)
+        .frame(minHeight: TaskEditorSubtaskEntryStyle.minimumHeight)
+    }
+
     private func addNew() {
         let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             isNewFocused = false
-            isAddingFirst = false
             return
         }
         onAdd(trimmed)
         newTitle = ""
-        isAddingFirst = true
         isNewFocused = true
     }
 
+}
+
+enum TaskEditorSubtaskEntryStyle {
+    static let startsAsInput = true
+    static let iconSize: CGFloat = 12
+    static let iconFrameSize: CGFloat = 18
+    static let minimumHeight: CGFloat = 40
 }
