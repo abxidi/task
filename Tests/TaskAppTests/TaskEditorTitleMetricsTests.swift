@@ -32,6 +32,10 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.minimumHeight, 40)
     }
 
+    func testAddedSubtasksAlignWithTheNewSubtaskIcon() {
+        XCTAssertEqual(TaskEditorSubtaskEntryStyle.listRowLeadingInset, 0)
+    }
+
     func testPriorityEntryUsesNormalAndHighPriorityLabels() {
         XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 0, importance: 0)), "正常")
         XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 2, importance: 3)), "高优")

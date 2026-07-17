@@ -33,7 +33,7 @@ struct SubtaskEditor: View {
                                     .strikethrough(completion[index])
                             }
                             .frame(minHeight: 40)
-                            .listRowInsets(.init(top: 0, leading: 10, bottom: 0, trailing: 10))
+                            .listRowInsets(.init(top: 0, leading: TaskEditorSubtaskEntryStyle.listRowLeadingInset, bottom: 0, trailing: 10))
                             .listRowSeparator(.visible)
                             .listRowBackground(Color.clear)
                         }
@@ -107,4 +107,5 @@ enum TaskEditorSubtaskEntryStyle {
     static let iconSize: CGFloat = 12
     static let iconFrameSize: CGFloat = 18
     static let minimumHeight: CGFloat = 40
+    static let listRowLeadingInset: CGFloat = 0
 }
