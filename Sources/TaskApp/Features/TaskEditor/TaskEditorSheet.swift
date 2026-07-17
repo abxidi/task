@@ -17,14 +17,17 @@ struct TaskEditorSheet: View {
     @State private var isMarkdownPresented = false
     private let onClose: (() -> Void)?
     private let outsideDismissToken: UUID?
+    private let onSubtaskCountChange: (Int) -> Void
 
     init(
         mode: TaskEditorMode,
         onClose: (() -> Void)? = nil,
-        outsideDismissToken: UUID? = nil
+        outsideDismissToken: UUID? = nil,
+        onSubtaskCountChange: @escaping (Int) -> Void = { _ in }
     ) {
         self.onClose = onClose
         self.outsideDismissToken = outsideDismissToken
+        self.onSubtaskCountChange = onSubtaskCountChange
         let editorModel: TaskEditorModel
         switch mode {
         case .create:
@@ -124,9 +127,15 @@ struct TaskEditorSheet: View {
             .background(TaskDesignTokens.panel)
 
         }
-        .frame(minWidth: 820, idealWidth: 980, minHeight: 620)
+        .frame(minWidth: 820, idealWidth: 980)
         .background(TaskDesignTokens.panel)
-        .onAppear { titleFocused = true }
+        .onAppear {
+            titleFocused = true
+            onSubtaskCountChange(model.draft.subtasks.count)
+        }
+        .onChange(of: model.draft.subtasks.count) { _, count in
+            onSubtaskCountChange(count)
+        }
         .onChange(of: model.draft) { _, _ in
             scheduleAutoSave()
         }

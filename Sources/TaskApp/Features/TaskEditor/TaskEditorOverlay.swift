@@ -17,10 +17,20 @@ struct TaskEditorOverlay: View {
     let mode: TaskEditorMode
     let onClose: () -> Void
     @State private var outsideDismissToken: UUID?
+    @State private var subtaskCount: Int
+
+    init(mode: TaskEditorMode, onClose: @escaping () -> Void) {
+        self.mode = mode
+        self.onClose = onClose
+        _subtaskCount = State(initialValue: mode.initialSubtaskCount)
+    }
 
     var body: some View {
         GeometryReader { proxy in
-            let panelSize = TaskEditorOverlayLayout.panelSize(for: proxy.size)
+            let panelSize = TaskEditorOverlayLayout.panelSize(
+                for: proxy.size,
+                subtaskCount: subtaskCount
+            )
 
             ZStack {
                 Color.black.opacity(0.24)
@@ -33,7 +43,8 @@ struct TaskEditorOverlay: View {
                 TaskEditorSheet(
                     mode: mode,
                     onClose: onClose,
-                    outsideDismissToken: outsideDismissToken
+                    outsideDismissToken: outsideDismissToken,
+                    onSubtaskCountChange: { subtaskCount = $0 }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .frame(width: panelSize.width, height: panelSize.height)
@@ -48,15 +59,30 @@ struct TaskEditorOverlay: View {
 }
 
 enum TaskEditorOverlayLayout {
-    static let preferredSize = CGSize(width: 1040, height: 720)
-    static let minimumSize = CGSize(width: 820, height: 620)
+    static let preferredWidth: CGFloat = 1040
+    static let minimumWidth: CGFloat = 820
+    static let initialHeight: CGFloat = 540
+    static let subtaskHeightIncrement: CGFloat = 41
+    static let maximumHeightRatio: CGFloat = 0.88
     static let edgeInset: CGFloat = 28
     static let supportsEscapeToClose = true
 
-    static func panelSize(for availableSize: CGSize) -> CGSize {
-        CGSize(
-            width: min(preferredSize.width, max(minimumSize.width, availableSize.width - edgeInset * 2)),
-            height: min(preferredSize.height, max(minimumSize.height, availableSize.height - edgeInset * 2))
+    static func panelSize(for availableSize: CGSize, subtaskCount: Int) -> CGSize {
+        let desiredHeight = initialHeight + CGFloat(max(0, subtaskCount)) * subtaskHeightIncrement
+        return CGSize(
+            width: min(preferredWidth, max(minimumWidth, availableSize.width - edgeInset * 2)),
+            height: min(desiredHeight, availableSize.height * maximumHeightRatio)
         )
+    }
+}
+
+private extension TaskEditorMode {
+    var initialSubtaskCount: Int {
+        switch self {
+        case .create, .createInColumn:
+            0
+        case .edit(let item):
+            item.subtasks.count
+        }
     }
 }

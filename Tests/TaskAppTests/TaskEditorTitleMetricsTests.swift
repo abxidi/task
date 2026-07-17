@@ -53,11 +53,30 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
     }
 
     func testTaskEditorUsesOnePanelSizeAcrossPresentationEntrypoints() {
-        let fullWindow = TaskEditorOverlayLayout.panelSize(for: CGSize(width: 1900, height: 1100))
-        let contentArea = TaskEditorOverlayLayout.panelSize(for: CGSize(width: 1500, height: 1100))
+        let fullWindow = TaskEditorOverlayLayout.panelSize(
+            for: CGSize(width: 1900, height: 1100),
+            subtaskCount: 0
+        )
+        let contentArea = TaskEditorOverlayLayout.panelSize(
+            for: CGSize(width: 1500, height: 1100),
+            subtaskCount: 0
+        )
 
-        XCTAssertEqual(fullWindow, CGSize(width: 1040, height: 720))
+        XCTAssertEqual(fullWindow, CGSize(width: 1040, height: 540))
         XCTAssertEqual(contentArea, fullWindow)
+    }
+
+    func testTaskEditorHeightGrowsPerSubtaskAndCapsAtEightyEightPercent() {
+        let availableSize = CGSize(width: 1900, height: 1000)
+
+        XCTAssertEqual(
+            TaskEditorOverlayLayout.panelSize(for: availableSize, subtaskCount: 3).height,
+            663
+        )
+        XCTAssertEqual(
+            TaskEditorOverlayLayout.panelSize(for: availableSize, subtaskCount: 20).height,
+            880
+        )
     }
 
     func testTaskEditorSupportsEscapeToClose() {
