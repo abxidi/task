@@ -19,6 +19,12 @@ final class PriorityMoveSaver: ObservableObject {
 
 enum PriorityMapScreenLayout {
     static let maximumMapSide: CGFloat = 620
+    static let contentMaximumWidth = maximumMapSide
+    static let metricHeight: CGFloat = 32
+    static let verticalPadding: CGFloat = 12
+    static let headerBottomSpacing: CGFloat = 8
+    static let metricsBottomSpacing: CGFloat = 8
+    static let toolbarBottomSpacing: CGFloat = 4
 
     static func mapSide(for availableSize: CGSize) -> CGFloat {
         min(availableSize.width, availableSize.height, maximumMapSide)
@@ -57,10 +63,10 @@ struct PriorityMapScreen: View {
                     PriorityMapFilterPopover(tags: tags, selectedTagNames: $selectedTagNames)
                         .frame(width: 220)
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, PriorityMapScreenLayout.headerBottomSpacing)
 
                 mapMetrics
-                    .padding(.bottom, 15)
+                    .padding(.bottom, PriorityMapScreenLayout.metricsBottomSpacing)
 
                 HStack {
                     HStack(spacing: 2) {
@@ -87,7 +93,7 @@ struct PriorityMapScreen: View {
                         .font(.system(size: 9))
                         .foregroundStyle(TaskDesignTokens.quiet)
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, PriorityMapScreenLayout.toolbarBottomSpacing)
 
                 GeometryReader { proxy in
                     let side = PriorityMapScreenLayout.mapSide(for: proxy.size)
@@ -119,8 +125,8 @@ struct PriorityMapScreen: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, 26)
-            .padding(.vertical, 25)
+            .padding(.vertical, PriorityMapScreenLayout.verticalPadding)
+            .frame(maxWidth: PriorityMapScreenLayout.contentMaximumWidth, maxHeight: .infinity)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(TaskDesignTokens.canvas)
 
@@ -194,13 +200,16 @@ struct PriorityMapScreen: View {
     }
 
     private func metricCell(title: String, value: String, note: String?) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(title)
                 .font(.system(size: 9))
                 .foregroundStyle(TaskDesignTokens.quiet)
-            HStack(alignment: .firstTextBaseline, spacing: 5) {
+
+            Spacer(minLength: 4)
+
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
-                    .font(.system(size: 19, weight: .semibold).monospacedDigit())
+                    .font(.system(size: 16, weight: .semibold).monospacedDigit())
                     .foregroundStyle(TaskDesignTokens.ink)
                 if let note {
                     Text(note)
@@ -209,9 +218,12 @@ struct PriorityMapScreen: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, minHeight: TaskDesignTokens.metricHeight, alignment: .leading)
-        .padding(.horizontal, 13)
-        .padding(.vertical, 12)
+        .frame(
+            maxWidth: .infinity,
+            minHeight: PriorityMapScreenLayout.metricHeight,
+            alignment: .leading
+        )
+        .padding(.horizontal, 10)
         .background(TaskDesignTokens.raised)
     }
 

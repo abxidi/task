@@ -14,6 +14,15 @@ final class PriorityMapLayoutTests: XCTestCase {
         XCTAssertEqual(PriorityMapScreenLayout.mapSide(for: CGSize(width: 900, height: 900)), 620)
     }
 
+    func testPriorityMapUsesCompactChromeMatchedToTheSquareWidth() {
+        XCTAssertEqual(
+            PriorityMapScreenLayout.contentMaximumWidth,
+            PriorityMapScreenLayout.maximumMapSide
+        )
+        XCTAssertEqual(PriorityMapScreenLayout.metricHeight, 32)
+        XCTAssertEqual(PriorityMapScreenLayout.verticalPadding, 12)
+    }
+
     func testCoordinateSquareLeavesRoomForOutsideQuadrantLabels() {
         let square = PriorityMapLayout.coordinateSquare(in: CGSize(width: 500, height: 500))
 
