@@ -30,13 +30,13 @@ struct PriorityMapScreen: View {
     var onCreateTask: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var taskEditorCoordinator: TaskEditorPresentationCoordinator
     @Query(filter: #Predicate<TaskItem> { !$0.isCompleted }, sort: \TaskItem.createdAt)
     private var tasks: [TaskItem]
     @Query(sort: \Tag.name) private var tags: [Tag]
     @AppStorage("dailyCapacityMinutes") private var capacityMinutes = 480
     @State private var selection: TaskItem?
     @StateObject private var saver = PriorityMoveSaver()
-    @State private var editingTask: TaskItem?
     @State private var filter: PriorityMapScope = .all
     @State private var selectedTagNames: Set<String> = []
     @State private var isFilterPresented = false
@@ -139,13 +139,6 @@ struct PriorityMapScreen: View {
                 .frame(width: 280)
                 .overlay(alignment: .leading) {
                     Rectangle().fill(TaskDesignTokens.line).frame(width: 1)
-                }
-            }
-        }
-        .overlay {
-            if let task = editingTask {
-                TaskEditorOverlay(mode: .edit(task)) {
-                    editingTask = nil
                 }
             }
         }
@@ -287,7 +280,7 @@ struct PriorityMapScreen: View {
                         .padding(.bottom, 16)
 
                         TaskChromeButton(title: "打开任务", style: .primary) {
-                            editingTask = selection
+                            taskEditorCoordinator.present(.edit(selection))
                         }
                         .frame(maxWidth: .infinity)
 

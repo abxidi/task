@@ -62,5 +62,17 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
 
     func testTaskEditorSupportsEscapeToClose() {
         XCTAssertTrue(TaskEditorOverlayLayout.supportsEscapeToClose)
+        XCTAssertTrue(TaskEditorLayout.supportsEscapeToClose)
+    }
+
+    @MainActor
+    func testTaskEditorCoordinatorOwnsOneWindowLevelPresentation() {
+        let coordinator = TaskEditorPresentationCoordinator()
+
+        XCTAssertNil(coordinator.mode)
+        coordinator.present(.create)
+        XCTAssertNotNil(coordinator.mode)
+        coordinator.dismiss()
+        XCTAssertNil(coordinator.mode)
     }
 }

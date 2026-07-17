@@ -136,6 +136,9 @@ struct TaskEditorSheet: View {
         .onDisappear {
             autoSaveTask?.cancel()
         }
+        .onExitCommand {
+            closeEditor()
+        }
         .alert("自动保存失败", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
@@ -335,6 +338,7 @@ enum TaskEditorLayout {
     static let usesAutomaticSave = true
     static let showsSaveButton = false
     static let showsCancelButton = false
+    static let supportsEscapeToClose = true
     static let titleContentWidth: CGFloat = 460
     static let emptySubtaskHeight: CGFloat = 40
 }

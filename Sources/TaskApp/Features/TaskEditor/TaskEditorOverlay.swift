@@ -1,5 +1,18 @@
 import SwiftUI
 
+@MainActor
+final class TaskEditorPresentationCoordinator: ObservableObject {
+    @Published private(set) var mode: TaskEditorMode?
+
+    func present(_ mode: TaskEditorMode) {
+        self.mode = mode
+    }
+
+    func dismiss() {
+        mode = nil
+    }
+}
+
 struct TaskEditorOverlay: View {
     let mode: TaskEditorMode
     let onClose: () -> Void

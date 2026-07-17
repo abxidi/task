@@ -26,12 +26,11 @@ struct TaskListScreen: View {
     var onCreateTask: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var taskEditorCoordinator: TaskEditorPresentationCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \TaskItem.createdAt) private var allTasks: [TaskItem]
     @Query(sort: \BoardColumn.order) private var boardColumns: [BoardColumn]
     @State private var scope: TaskListScope = .all
-    @State private var editingTask: TaskItem?
-    @State private var creatingInColumn: BoardColumn?
     @State private var renamingColumn: BoardColumn?
     @State private var renameText = ""
     @StateObject private var dragCoordinator = BoardDragCoordinator()
@@ -52,17 +51,6 @@ struct TaskListScreen: View {
         .onExitCommand {
             guard dragCoordinator.taskID != nil else { return }
             settleDrag(.cancel)
-        }
-        .overlay {
-            if let task = editingTask {
-                TaskEditorOverlay(mode: .edit(task)) {
-                    editingTask = nil
-                }
-            } else if let lane = creatingInColumn {
-                TaskEditorOverlay(mode: .createInColumn(lane.id)) {
-                    creatingInColumn = nil
-                }
-            }
         }
         .sheet(item: $renamingColumn) { lane in
             renameSheet(for: lane)
@@ -87,7 +75,11 @@ struct TaskListScreen: View {
                 eyebrow: "任务列表 · (scope.title)",
                 title: "任务列表",
                 primaryActionTitle: "新任务",
-                primaryAction: { creatingInColumn = lanes.first }
+                primaryAction: {
+                    if let lane = lanes.first {
+                        taskEditorCoordinator.present(.createInColumn(lane.id))
+                    }
+                }
             )
             .padding(.horizontal, 26)
             .padding(.top, 25)
@@ -105,7 +97,7 @@ struct TaskListScreen: View {
                             BoardColumnView(
                                 column: lane,
                                 tasks: tasks(in: lane),
-                                onAddTask: { creatingInColumn = lane },
+                                onAddTask: { taskEditorCoordinator.present(.createInColumn(lane.id)) },
                                 onRename: {
                                     renameText = lane.name
                                     renamingColumn = lane
@@ -113,7 +105,7 @@ struct TaskListScreen: View {
                                 onArchive: {},
                                 onDragChanged: { updateDrag(at: $0) },
                                 onDragEnded: { finishDrag(at: $0) },
-                                onOpenTask: { editingTask = $0 },
+                                onOpenTask: { taskEditorCoordinator.present(.edit($0)) },
                                 onToggleTask: toggle,
                                 draggedTask: draggedTask,
                                 targetPlaceholderIndex: targetPlaceholderIndex(for: lane),

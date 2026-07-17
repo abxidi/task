@@ -4,7 +4,7 @@ import TaskAI
 struct TaskAppShell: View {
     @State private var selection: AppRoute? = .priorityMap
     @State private var listScope: TaskListScope?
-    @State private var isCreatingTask = false
+    @StateObject private var taskEditorCoordinator = TaskEditorPresentationCoordinator()
     @AppStorage("aiConfigurationJSON") private var configurationJSON = ""
     private let keyStore = KeychainAPIKeyStore()
 
@@ -33,15 +33,15 @@ struct TaskAppShell: View {
                 switch selection ?? .priorityMap {
                 case .priorityMap:
                     PriorityMapScreen(isAIConfigured: isAIConfigured) {
-                        isCreatingTask = true
+                        taskEditorCoordinator.present(.create)
                     }
                 case .taskList:
                     TaskListScreen(initialScope: listScope) {
-                        isCreatingTask = true
+                        taskEditorCoordinator.present(.create)
                     }
                 case .projectBoard:
                     ProjectBoardScreen(isAIConfigured: isAIConfigured) {
-                        isCreatingTask = true
+                        taskEditorCoordinator.present(.create)
                     }
                 case .insights:
                     InsightsScreen()
@@ -54,15 +54,16 @@ struct TaskAppShell: View {
         }
         .frame(minWidth: 980, minHeight: 680)
         .background(TaskDesignTokens.canvas)
+        .environmentObject(taskEditorCoordinator)
         .overlay {
-            if isCreatingTask {
-                TaskEditorOverlay(mode: .create) {
-                    isCreatingTask = false
+            if let mode = taskEditorCoordinator.mode {
+                TaskEditorOverlay(mode: mode) {
+                    taskEditorCoordinator.dismiss()
                 }
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .taskCreateRequested)) { _ in
-            isCreatingTask = true
+            taskEditorCoordinator.present(.create)
         }
     }
 }

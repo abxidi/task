@@ -8,6 +8,7 @@ struct ProjectBoardScreen: View {
     var onCreateTask: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var taskEditorCoordinator: TaskEditorPresentationCoordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(filter: #Predicate<Project> { !$0.isArchived }, sort: \Project.createdAt)
     private var projects: [Project]
@@ -18,7 +19,6 @@ struct ProjectBoardScreen: View {
     @State private var errorMessage: String?
     @State private var isCreatingProject = false
     @State private var newProjectName = ""
-    @State private var creatingInColumn: BoardColumn?
     @State private var renamingColumn: BoardColumn?
     @State private var renameText = ""
     @State private var rangeDays = 7
@@ -60,13 +60,6 @@ struct ProjectBoardScreen: View {
             .padding(24)
             .frame(width: 360)
             .background(TaskDesignTokens.panel)
-        }
-        .overlay {
-            if creatingInColumn != nil {
-                TaskEditorOverlay(mode: .create) {
-                    creatingInColumn = nil
-                }
-            }
         }
         .sheet(item: $renamingColumn) { column in
             VStack(alignment: .leading, spacing: 16) {
@@ -174,7 +167,7 @@ struct ProjectBoardScreen: View {
                                     BoardColumnView(
                                         column: column,
                                         tasks: tasks(in: column, project: project),
-                                        onAddTask: { creatingInColumn = column },
+                                        onAddTask: { taskEditorCoordinator.present(.createInColumn(column.id)) },
                                         onRename: {
                                             renamingColumn = column
                                             renameText = column.name
