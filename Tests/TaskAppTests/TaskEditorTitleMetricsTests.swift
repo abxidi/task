@@ -22,7 +22,7 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
 
     func testEmptyEditorUsesCompactWritingSurface() {
         XCTAssertEqual(TaskEditorLayout.titleContentWidth, 460)
-        XCTAssertEqual(TaskEditorLayout.emptySubtaskHeight, 68)
+        XCTAssertEqual(TaskEditorLayout.emptySubtaskHeight, 40)
     }
 
     func testPriorityEntryUsesNormalAndHighPriorityLabels() {

@@ -336,7 +336,7 @@ enum TaskEditorLayout {
     static let showsSaveButton = false
     static let showsCancelButton = false
     static let titleContentWidth: CGFloat = 460
-    static let emptySubtaskHeight: CGFloat = 68
+    static let emptySubtaskHeight: CGFloat = 40
 }
 
 enum TaskEditorPriorityLabel {
