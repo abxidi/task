@@ -51,4 +51,16 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
     func testEditorPlaceholdersUseReducedEmphasis() {
         XCTAssertLessThan(TaskEditorPlaceholder.opacity, 1)
     }
+
+    func testTaskEditorUsesOnePanelSizeAcrossPresentationEntrypoints() {
+        let fullWindow = TaskEditorOverlayLayout.panelSize(for: CGSize(width: 1900, height: 1100))
+        let contentArea = TaskEditorOverlayLayout.panelSize(for: CGSize(width: 1500, height: 1100))
+
+        XCTAssertEqual(fullWindow, CGSize(width: 1040, height: 720))
+        XCTAssertEqual(contentArea, fullWindow)
+    }
+
+    func testTaskEditorSupportsEscapeToClose() {
+        XCTAssertTrue(TaskEditorOverlayLayout.supportsEscapeToClose)
+    }
 }
