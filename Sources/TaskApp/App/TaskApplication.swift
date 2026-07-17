@@ -9,13 +9,11 @@ struct TaskApplication: App {
     @StateObject private var globalShortcutManager = GlobalShortcutManager()
 
     var body: some Scene {
-        WindowGroup("Task") {
-            TaskAppShell()
-                .modelContainer(container)
-                .environmentObject(globalShortcutManager)
-                .onAppear {
-                    globalShortcutManager.start()
-                }
+        WindowGroup("Task", id: "main") {
+            MainWindowContent(
+                container: container,
+                globalShortcutManager: globalShortcutManager
+            )
         }
         .defaultSize(width: 1280, height: 820)
         .commands {
@@ -26,5 +24,24 @@ struct TaskApplication: App {
                 .keyboardShortcut("n", modifiers: .command)
             }
         }
+    }
+}
+
+@MainActor
+private struct MainWindowContent: View {
+    let container: ModelContainer
+    @ObservedObject var globalShortcutManager: GlobalShortcutManager
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        TaskAppShell()
+            .modelContainer(container)
+            .environmentObject(globalShortcutManager)
+            .onAppear {
+                TaskWindowActivator.configureMainWindowOpening {
+                    openWindow(id: "main")
+                }
+                globalShortcutManager.start()
+            }
     }
 }

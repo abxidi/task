@@ -11,4 +11,16 @@ final class StatusBarControllerTests: XCTestCase {
 
         XCTAssertEqual(activations, 1)
     }
+
+    func testMissingMainWindowRequestsOpeningTheMainScene() {
+        var openRequests = 0
+        let activator = TaskWindowActivator(
+            mainWindow: { nil },
+            openMainWindow: { openRequests += 1 }
+        )
+
+        activator.showMainWindow()
+
+        XCTAssertEqual(openRequests, 1)
+    }
 }
