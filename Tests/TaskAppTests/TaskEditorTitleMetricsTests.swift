@@ -62,7 +62,7 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
             subtaskCount: 0
         )
 
-        XCTAssertEqual(fullWindow, CGSize(width: 1040, height: 540))
+        XCTAssertEqual(fullWindow, CGSize(width: 1040, height: 360))
         XCTAssertEqual(contentArea, fullWindow)
     }
 
@@ -71,7 +71,7 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
 
         XCTAssertEqual(
             TaskEditorOverlayLayout.panelSize(for: availableSize, subtaskCount: 3).height,
-            663
+            483
         )
         XCTAssertEqual(
             TaskEditorOverlayLayout.panelSize(for: availableSize, subtaskCount: 20).height,

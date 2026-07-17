@@ -61,7 +61,7 @@ struct TaskEditorOverlay: View {
 enum TaskEditorOverlayLayout {
     static let preferredWidth: CGFloat = 1040
     static let minimumWidth: CGFloat = 820
-    static let initialHeight: CGFloat = 540
+    static let initialHeight: CGFloat = 360
     static let subtaskHeightIncrement: CGFloat = 41
     static let maximumHeightRatio: CGFloat = 0.88
     static let edgeInset: CGFloat = 28
