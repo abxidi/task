@@ -5,6 +5,7 @@ import TaskPersistence
 struct BoardTaskCard: View {
     let task: TaskItem
     var onToggleCompletion: (() -> Void)? = nil
+    var onDelete: (() -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -27,6 +28,18 @@ struct BoardTaskCard: View {
                     .strikethrough(task.isCompleted)
                     .padding(.trailing, TaskCardLayout.titleTrailingReservation)
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                if let onDelete {
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .font(.system(size: 11, weight: .semibold))
+                            .frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(TaskDesignTokens.quiet)
+                    .help("删除任务")
+                    .accessibilityLabel("删除任务")
+                }
             }
             HStack(spacing: 5) {
                 if let dueAt = task.dueAt {

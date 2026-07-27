@@ -110,6 +110,7 @@ struct BoardColumnView: View {
     let onDragEnded: (CGPoint) -> Void
     var onOpenTask: (TaskItem) -> Void = { _ in }
     var onToggleTask: (TaskItem) -> Void = { _ in }
+    var onDelete: ((TaskItem) -> Void)? = nil
     let draggedTask: TaskItem?
     let targetPlaceholderIndex: Int?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -126,6 +127,7 @@ struct BoardColumnView: View {
         onDragEnded: @escaping (CGPoint) -> Void,
         onOpenTask: @escaping (TaskItem) -> Void = { _ in },
         onToggleTask: @escaping (TaskItem) -> Void = { _ in },
+        onDelete: ((TaskItem) -> Void)? = nil,
         draggedTask: TaskItem? = nil,
         targetPlaceholderIndex: Int? = nil,
         dragCoordinator: BoardDragCoordinator
@@ -139,6 +141,7 @@ struct BoardColumnView: View {
         self.onDragEnded = onDragEnded
         self.onOpenTask = onOpenTask
         self.onToggleTask = onToggleTask
+        self.onDelete = onDelete
         self.draggedTask = draggedTask
         self.targetPlaceholderIndex = targetPlaceholderIndex
         _dragCoordinator = ObservedObject(wrappedValue: dragCoordinator)
@@ -181,7 +184,11 @@ struct BoardColumnView: View {
                         if targetPlaceholderIndex == index, let draggedTask {
                             dropPlaceholder(for: draggedTask)
                         }
-                        BoardTaskCard(task: task) { onToggleTask(task) }
+                        BoardTaskCard(
+                            task: task,
+                            onToggleCompletion: { onToggleTask(task) },
+                            onDelete: onDelete.map { deleteTask in { deleteTask(task) } }
+                        )
                             .opacity(BoardDragPresentation.sourceOpacity(isActiveSource: dragCoordinator.taskID == task.id))
                             .animation(
                                 placeholderAnimation,

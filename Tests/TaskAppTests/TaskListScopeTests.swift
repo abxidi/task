@@ -8,4 +8,11 @@ final class TaskListScopeTests: XCTestCase {
             ["今天", "未来 7 天", "全部任务", "已完成"]
         )
     }
+
+    func testCompletedScopeAllowsTaskDeletionOnly() {
+        XCTAssertTrue(TaskListScope.completed.allowsTaskDeletion)
+        XCTAssertFalse(TaskListScope.today.allowsTaskDeletion)
+        XCTAssertFalse(TaskListScope.nextSevenDays.allowsTaskDeletion)
+        XCTAssertFalse(TaskListScope.all.allowsTaskDeletion)
+    }
 }

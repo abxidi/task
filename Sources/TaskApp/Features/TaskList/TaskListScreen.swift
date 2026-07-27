@@ -19,6 +19,10 @@ enum TaskListScope: String, CaseIterable, Identifiable {
         case .completed: "已完成"
         }
     }
+
+    var allowsTaskDeletion: Bool {
+        self == .completed
+    }
 }
 
 struct TaskListScreen: View {
@@ -38,6 +42,7 @@ struct TaskListScreen: View {
     @State private var dropPlaceholderFrames: [UUID: CGRect] = [:]
     @State private var settlementToken: UUID?
     @State private var errorMessage: String?
+    @State private var taskPendingDeletion: TaskItem?
 
     var body: some View {
         GeometryReader { geometry in
@@ -62,6 +67,21 @@ struct TaskListScreen: View {
             Button("好", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "")
+        }
+        .confirmationDialog(
+            "删除任务？",
+            isPresented: Binding(
+                get: { taskPendingDeletion != nil },
+                set: { if !$0 { taskPendingDeletion = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: taskPendingDeletion
+        ) { task in
+            Button("删除", role: .destructive) {
+                delete(task)
+            }
+        } message: { task in
+            Text("“\(task.title)”将从本机永久删除。")
         }
         .onDisappear {
             settlementToken = nil
@@ -107,6 +127,7 @@ struct TaskListScreen: View {
                                 onDragEnded: { finishDrag(at: $0) },
                                 onOpenTask: { taskEditorCoordinator.present(.edit($0)) },
                                 onToggleTask: toggle,
+                                onDelete: scope.allowsTaskDeletion ? { taskPendingDeletion = $0 } : nil,
                                 draggedTask: draggedTask,
                                 targetPlaceholderIndex: targetPlaceholderIndex(for: lane),
                                 dragCoordinator: dragCoordinator
@@ -381,5 +402,14 @@ struct TaskListScreen: View {
 
     private func toggle(_ task: TaskItem) {
         try? TaskRepository(context: modelContext).setCompleted(task, isCompleted: !task.isCompleted)
+    }
+
+    private func delete(_ task: TaskItem) {
+        do {
+            try TaskRepository(context: modelContext).deleteTask(task)
+            taskPendingDeletion = nil
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
