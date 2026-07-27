@@ -1,5 +1,6 @@
 import XCTest
 @testable import TaskApp
+import TaskPersistence
 
 final class TaskListScopeTests: XCTestCase {
     func testScopesUseAllTasks() {
@@ -14,5 +15,13 @@ final class TaskListScopeTests: XCTestCase {
         XCTAssertFalse(TaskListScope.today.allowsTaskDeletion)
         XCTAssertFalse(TaskListScope.nextSevenDays.allowsTaskDeletion)
         XCTAssertFalse(TaskListScope.all.allowsTaskDeletion)
+    }
+
+    func testCompletionLaneAllowsTaskDeletionInAllTasksScope() {
+        let completionLane = BoardColumn(name: "已完成", order: 3, isCompletionColumn: true)
+        let planningLane = BoardColumn(name: "待规划", order: 0)
+
+        XCTAssertTrue(TaskListScope.all.allowsTaskDeletion(in: completionLane))
+        XCTAssertFalse(TaskListScope.all.allowsTaskDeletion(in: planningLane))
     }
 }

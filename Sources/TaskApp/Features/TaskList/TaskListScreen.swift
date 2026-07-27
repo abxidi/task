@@ -23,6 +23,10 @@ enum TaskListScope: String, CaseIterable, Identifiable {
     var allowsTaskDeletion: Bool {
         self == .completed
     }
+
+    func allowsTaskDeletion(in lane: BoardColumn) -> Bool {
+        allowsTaskDeletion || lane.isCompletionColumn
+    }
 }
 
 struct TaskListScreen: View {
@@ -127,7 +131,7 @@ struct TaskListScreen: View {
                                 onDragEnded: { finishDrag(at: $0) },
                                 onOpenTask: { taskEditorCoordinator.present(.edit($0)) },
                                 onToggleTask: toggle,
-                                onDelete: scope.allowsTaskDeletion ? { taskPendingDeletion = $0 } : nil,
+                                onDelete: scope.allowsTaskDeletion(in: lane) ? { taskPendingDeletion = $0 } : nil,
                                 draggedTask: draggedTask,
                                 targetPlaceholderIndex: targetPlaceholderIndex(for: lane),
                                 dragCoordinator: dragCoordinator
