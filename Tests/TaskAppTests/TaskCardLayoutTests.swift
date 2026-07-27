@@ -6,4 +6,8 @@ final class TaskCardLayoutTests: XCTestCase {
         XCTAssertEqual(TaskCardLayout.priorityBadgeInset, 10)
         XCTAssertGreaterThanOrEqual(TaskCardLayout.titleTrailingReservation, 32)
     }
+
+    func testDeletionActionUsesTheOppositeCardCornerFromPriority() {
+        XCTAssertEqual(TaskCardLayout.deletionActionAlignment, .bottomTrailing)
+    }
 }

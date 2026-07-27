@@ -28,18 +28,6 @@ struct BoardTaskCard: View {
                     .strikethrough(task.isCompleted)
                     .padding(.trailing, TaskCardLayout.titleTrailingReservation)
                     .frame(maxWidth: .infinity, alignment: .leading)
-
-                if let onDelete {
-                    Button(action: onDelete) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 11, weight: .semibold))
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TaskDesignTokens.quiet)
-                    .help("删除任务")
-                    .accessibilityLabel("删除任务")
-                }
             }
             HStack(spacing: 5) {
                 if let dueAt = task.dueAt {
@@ -68,6 +56,20 @@ struct BoardTaskCard: View {
             )
             .padding(TaskCardLayout.priorityBadgeInset)
         }
+        .overlay(alignment: TaskCardLayout.deletionActionAlignment) {
+            if let onDelete {
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 11, weight: .semibold))
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(TaskDesignTokens.quiet)
+                .help("删除任务")
+                .accessibilityLabel("删除任务")
+                .padding(6)
+            }
+        }
         .opacity(task.isCompleted ? 0.56 : 1)
     }
 
@@ -84,4 +86,5 @@ struct BoardTaskCard: View {
 enum TaskCardLayout {
     static let priorityBadgeInset: CGFloat = 10
     static let titleTrailingReservation: CGFloat = 32
+    static let deletionActionAlignment: Alignment = .bottomTrailing
 }
