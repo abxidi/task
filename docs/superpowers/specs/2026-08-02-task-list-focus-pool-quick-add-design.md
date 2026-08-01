@@ -51,7 +51,16 @@ FocusRepository(context: modelContext).upsert(
 
 同一任务最多有一条 `FocusEntry`。并发或重复点击必须归并为一次 upsert，不得创建重复记录。
 
-### 2.3 状态展示
+### 2.3 右键菜单
+
+任务列表中的任务卡片支持右键菜单，并与卡片内快捷入口复用同一组 `FocusPoolCardAction` 回调，确保两个入口的状态和保存结果完全一致。
+
+- 任务未加入正在做池时，右键菜单显示“加入到正在做池”。选择后以 `.focused` 和空备注创建记录。
+- 任务已加入正在做池时，右键菜单显示“正在做”子菜单。子菜单按顺序包含“专注、暂停、阻塞、等待、编辑备注、移出正在做”，行为与卡片内已加入入口相同。
+- 右键菜单不包含任务完成、项目、泳道或优先级的修改操作；不会覆盖看板列标题已有的右键菜单。
+- 项目看板和拖动浮层不显示正在做入口或正在做相关右键菜单。
+
+### 2.4 状态展示
 
 状态名称与符号沿用正在做页既有约定：
 
@@ -64,7 +73,7 @@ FocusRepository(context: modelContext).upsert(
 
 备注仅在“正在做”页的条目中持续可见；任务列表不额外展开备注正文，以维持列表的扫描密度。备注仍可随时通过已加入入口编辑。
 
-### 2.4 数据边界与失败处理
+### 2.5 数据边界与失败处理
 
 本功能复用现有 `FocusEntry`、`TaskFocusState` 和 `FocusRepository`，不引入 SwiftData 模型变更或迁移。
 
@@ -83,6 +92,7 @@ FocusRepository(context: modelContext).upsert(
 - 每个状态菜单项使用完整中文状态名称；“编辑备注”和“移出正在做”使用明确的动作名称。
 - hover、键盘焦点和已加入状态均保持不小于系统可读对比度的非颜色信息（图标或文字标签）。
 - `Return` 或 `Space` 在键盘焦点位于入口时执行与点击相同的行为；`Escape` 关闭菜单或备注 popover，不修改未保存的备注。
+- 右键菜单项使用“加入到正在做池”与完整状态名称；已加入任务的“正在做”子菜单可由 VoiceOver 识别为菜单层级。
 
 ## 4. 实现边界
 
@@ -90,6 +100,7 @@ FocusRepository(context: modelContext).upsert(
 
 - `Sources/TaskApp/Features/Board/BoardTaskCard.swift`：添加可选、任务列表专用的正在做入口呈现与回调，不改变默认卡片行为。
 - `Sources/TaskApp/Features/TaskList/TaskListScreen.swift`：查询 `FocusEntry`，将任务与条目关联，并处理加入、状态、备注与移出操作及错误呈现。
+- `Sources/TaskApp/Features/Board/BoardColumnView.swift`：仅在任务列表使用的静态卡片上透传右键菜单 action；项目看板与拖动浮层维持默认呈现。
 - 如有必要，新建小型纯展示组件以承载入口和状态菜单；该组件不直接访问 SwiftData。
 - `Sources/TaskApp/Features/FocusPoolScreen.swift`、`FocusRepository` 和持久化模型无需因本功能改变其数据契约。
 
@@ -106,5 +117,6 @@ FocusRepository(context: modelContext).upsert(
 5. 移出正在做只删除 `FocusEntry`，不改变任务完成状态、项目、泳道或优先级坐标。
 6. 看板卡片和拖动浮层默认不显示正在做快捷入口。
 7. 未加入与已加入入口均具备约定的 tooltip、VoiceOver 标签及键盘可操作性。
+8. 任务列表未加入任务的右键菜单可加入正在做池；已加入任务显示完整“正在做”管理子菜单；项目看板和拖动浮层不显示该菜单。
 
 完成该增量后，按仓库质量门槛运行相关单元测试、完整 `swift test`、release build、打包和签名验证；同时在真实 macOS 运行态检查浅色/深色模式、键盘焦点和不同窗口宽度下的卡片布局。
