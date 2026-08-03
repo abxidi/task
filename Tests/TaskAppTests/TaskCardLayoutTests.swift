@@ -10,4 +10,9 @@ final class TaskCardLayoutTests: XCTestCase {
     func testDeletionActionUsesTheOppositeCardCornerFromPriority() {
         XCTAssertEqual(TaskCardLayout.deletionActionAlignment, .bottomTrailing)
     }
+
+    func testSubtaskProgressShowsIncompleteCountBeforeTotal() {
+        XCTAssertEqual(TaskSubtaskProgress.label(for: [false, false, true]), "2/3")
+        XCTAssertNil(TaskSubtaskProgress.label(for: []))
+    }
 }

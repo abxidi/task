@@ -36,7 +36,10 @@ struct BoardTaskCard: View {
                 if let minutes = task.estimatedMinutes {
                     metaChip("\(minutes) 分")
                 }
-                if task.dueAt == nil && task.estimatedMinutes == nil {
+                if let subtaskProgress = TaskSubtaskProgress.label(for: task.subtasks.map(\.isCompleted)) {
+                    metaChip("子任务 \(subtaskProgress)")
+                }
+                if task.dueAt == nil && task.estimatedMinutes == nil && task.subtasks.isEmpty {
                     metaChip("无日期")
                 }
             }
@@ -87,4 +90,11 @@ enum TaskCardLayout {
     static let priorityBadgeInset: CGFloat = 10
     static let titleTrailingReservation: CGFloat = 32
     static let deletionActionAlignment: Alignment = .bottomTrailing
+}
+
+enum TaskSubtaskProgress {
+    static func label(for completion: [Bool]) -> String? {
+        guard !completion.isEmpty else { return nil }
+        return "\(completion.filter { !$0 }.count)/\(completion.count)"
+    }
 }
