@@ -14,7 +14,10 @@ public enum BackupError: Error, Equatable {
     case duplicateIDs
     case missingRelationship
     case invalidCoordinate
+    case invalidTimeRange
     case multipleCompletionColumns
+    case duplicateFocusEntry
+    case invalidFocusState
 }
 
 @MainActor
@@ -37,6 +40,8 @@ public final class BackupService: BackupServicing {
         let columns = try context.fetch(FetchDescriptor<BoardColumn>())
         let tasks = try context.fetch(FetchDescriptor<TaskItem>())
         let subtasks = try context.fetch(FetchDescriptor<Subtask>())
+        let attachments = try context.fetch(FetchDescriptor<SubtaskAttachment>())
+        let focusEntries = try context.fetch(FetchDescriptor<FocusEntry>())
         let tags = try context.fetch(FetchDescriptor<Tag>())
 
         let envelope = BackupEnvelope(
@@ -59,6 +64,7 @@ public final class BackupService: BackupServicing {
                     id: $0.id,
                     title: $0.title,
                     details: $0.details,
+                    startAt: $0.startAt,
                     urgency: $0.urgency,
                     importance: $0.importance,
                     dueAt: $0.dueAt,
@@ -86,6 +92,27 @@ public final class BackupService: BackupServicing {
                     createdAt: subtask.createdAt
                 )
             },
+            attachments: attachments.compactMap { attachment in
+                guard let subtaskID = attachment.subtask?.id else { return nil }
+                return BackupSubtaskAttachment(
+                    id: attachment.id,
+                    subtaskID: subtaskID,
+                    imageData: attachment.imageData,
+                    thumbnailData: attachment.thumbnailData,
+                    createdAt: attachment.createdAt
+                )
+            },
+            focusEntries: focusEntries.compactMap { entry in
+                guard let taskID = entry.task?.id else { return nil }
+                return BackupFocusEntry(
+                    id: entry.id,
+                    taskID: taskID,
+                    stateRawValue: entry.stateRawValue,
+                    note: entry.note,
+                    createdAt: entry.createdAt,
+                    updatedAt: entry.updatedAt
+                )
+            },
             tags: tags.map { BackupTag(id: $0.id, name: $0.name, colorHex: $0.colorHex) }
         )
         return try encoder.encode(envelope)
@@ -93,7 +120,7 @@ public final class BackupService: BackupServicing {
 
     public func validateImport(_ data: Data) throws -> BackupEnvelope {
         let envelope = try decoder.decode(BackupEnvelope.self, from: data)
-        guard envelope.schemaVersion == BackupEnvelope.currentSchemaVersion else {
+        guard (1...BackupEnvelope.currentSchemaVersion).contains(envelope.schemaVersion) else {
             throw BackupError.unsupportedSchema(envelope.schemaVersion)
         }
 
@@ -101,8 +128,10 @@ public final class BackupService: BackupServicing {
         let columnIDs = envelope.columns.map(\.id)
         let taskIDs = envelope.tasks.map(\.id)
         let subtaskIDs = envelope.subtasks.map(\.id)
+        let attachmentIDs = envelope.attachments.map(\.id)
+        let focusIDs = envelope.focusEntries.map(\.id)
         let tagIDs = envelope.tags.map(\.id)
-        let allIDs = projectIDs + columnIDs + taskIDs + subtaskIDs + tagIDs
+        let allIDs = projectIDs + columnIDs + taskIDs + subtaskIDs + attachmentIDs + focusIDs + tagIDs
         if Set(allIDs).count != allIDs.count {
             throw BackupError.duplicateIDs
         }
@@ -138,10 +167,25 @@ public final class BackupService: BackupServicing {
             if !task.tagIDs.allSatisfy(tagIDSet.contains) {
                 throw BackupError.missingRelationship
             }
+            if let startAt = task.startAt, let dueAt = task.dueAt, startAt > dueAt {
+                throw BackupError.invalidTimeRange
+            }
         }
 
         for subtask in envelope.subtasks {
             guard taskIDSet.contains(subtask.taskID) else { throw BackupError.missingRelationship }
+        }
+
+        let subtaskIDSet = Set(subtaskIDs)
+        for attachment in envelope.attachments {
+            guard subtaskIDSet.contains(attachment.subtaskID) else { throw BackupError.missingRelationship }
+        }
+
+        var focusedTaskIDs = Set<UUID>()
+        for entry in envelope.focusEntries {
+            guard taskIDSet.contains(entry.taskID) else { throw BackupError.missingRelationship }
+            guard TaskFocusState(rawValue: entry.stateRawValue) != nil else { throw BackupError.invalidFocusState }
+            guard focusedTaskIDs.insert(entry.taskID).inserted else { throw BackupError.duplicateFocusEntry }
         }
 
         return envelope
@@ -153,6 +197,8 @@ public final class BackupService: BackupServicing {
         for existing in try context.fetch(FetchDescriptor<Tag>()) { context.delete(existing) }
         for existing in try context.fetch(FetchDescriptor<BoardColumn>()) { context.delete(existing) }
         for existing in try context.fetch(FetchDescriptor<Subtask>()) { context.delete(existing) }
+        for existing in try context.fetch(FetchDescriptor<SubtaskAttachment>()) { context.delete(existing) }
+        for existing in try context.fetch(FetchDescriptor<FocusEntry>()) { context.delete(existing) }
 
         var projectsByID: [UUID: Project] = [:]
         for dto in envelope.projects {
@@ -181,6 +227,7 @@ public final class BackupService: BackupServicing {
         for dto in envelope.tasks {
             let task = TaskItem(id: dto.id, title: dto.title, now: dto.createdAt)
             task.details = dto.details
+            task.startAt = dto.startAt
             task.urgency = dto.urgency
             task.importance = dto.importance
             task.dueAt = dto.dueAt
@@ -203,11 +250,33 @@ public final class BackupService: BackupServicing {
             tasksByID[dto.id] = task
         }
 
+        var subtasksByID: [UUID: Subtask] = [:]
         for dto in envelope.subtasks {
             let subtask = Subtask(id: dto.id, title: dto.title, order: dto.order, createdAt: dto.createdAt)
             subtask.isCompleted = dto.isCompleted
             subtask.task = tasksByID[dto.taskID]
             context.insert(subtask)
+            subtasksByID[dto.id] = subtask
+        }
+
+        for dto in envelope.attachments {
+            let attachment = SubtaskAttachment(
+                id: dto.id,
+                imageData: dto.imageData,
+                thumbnailData: dto.thumbnailData,
+                createdAt: dto.createdAt
+            )
+            attachment.subtask = subtasksByID[dto.subtaskID]
+            context.insert(attachment)
+        }
+
+        for dto in envelope.focusEntries {
+            guard let state = TaskFocusState(rawValue: dto.stateRawValue) else { continue }
+            let entry = FocusEntry(id: dto.id, state: state, note: dto.note, now: dto.createdAt)
+            entry.updatedAt = dto.updatedAt
+            entry.task = tasksByID[dto.taskID]
+            tasksByID[dto.taskID]?.focusEntry = entry
+            context.insert(entry)
         }
 
         try context.save()

@@ -32,6 +32,43 @@ final class BackupServiceTests: XCTestCase {
         XCTAssertEqual(importedTasks.first?.importance, 3)
     }
 
+    func testRoundTripPreservesStartTimeFocusAndSubtaskImage() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let task = TaskItem(title: "准备演示")
+        let start = Date(timeIntervalSince1970: 1_000)
+        let end = Date(timeIntervalSince1970: 2_000)
+        task.startAt = start
+        task.dueAt = end
+        let subtask = Subtask(title: "检查截图", order: 0)
+        subtask.task = task
+        let attachment = SubtaskAttachment(imageData: Data([0xA1]), thumbnailData: Data([0xB2]))
+        attachment.subtask = subtask
+        task.subtasks = [subtask]
+        container.mainContext.insert(task)
+        container.mainContext.insert(subtask)
+        container.mainContext.insert(attachment)
+        _ = try FocusRepository(context: container.mainContext).upsert(
+            task: task,
+            state: .paused,
+            note: "等待评审"
+        )
+
+        let service = BackupService(context: container.mainContext)
+        let exported = try service.exportSnapshot(now: Date(timeIntervalSince1970: 3_000))
+        let envelope = try service.validateImport(exported)
+        let restored = try ModelContainerFactory.make(inMemory: true)
+        try BackupService(context: restored.mainContext).applyImport(envelope)
+
+        let restoredTask = try XCTUnwrap(try restored.mainContext.fetch(FetchDescriptor<TaskItem>()).first)
+        let restoredSubtask = try XCTUnwrap(try restored.mainContext.fetch(FetchDescriptor<Subtask>()).first)
+        let restoredFocus = try XCTUnwrap(try restored.mainContext.fetch(FetchDescriptor<FocusEntry>()).first)
+        XCTAssertEqual(restoredTask.startAt, start)
+        XCTAssertEqual(restoredTask.dueAt, end)
+        XCTAssertEqual(restoredSubtask.attachments.first?.imageData, Data([0xA1]))
+        XCTAssertEqual(restoredFocus.state, .paused)
+        XCTAssertEqual(restoredFocus.note, "等待评审")
+    }
+
     func testRejectsUnsupportedSchemaAndWritesNothing() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let service = BackupService(context: container.mainContext)
