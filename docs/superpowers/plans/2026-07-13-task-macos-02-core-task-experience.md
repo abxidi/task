@@ -1,5 +1,7 @@
 # Task macOS 02 Core Task Experience Implementation Plan
 
+> **状态（2026-07-31）**：本计划中的“任务设置”工具栏和侧栏实现已被用户确认的“内容优先、属性内联”方案替代。任务编辑的现行行为以产品规格第 5 节、UI 规范第 6 节和当前源码为准；下方历史步骤仅保留交接记录。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 交付无需 AI 或额外设置即可使用的任务闭环，包括任务列表、内容优先编辑器和严格 `-3...3` 的正方形优先级地图。

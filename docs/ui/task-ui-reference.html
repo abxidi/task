@@ -174,10 +174,8 @@
     .sheet-head { display: flex; align-items: center; height: 54px; padding: 0 20px; border-bottom: 1px solid var(--line); }
     .sheet-head b { font-size: 13px; }
     .kbd { margin-left: 8px; padding: 2px 5px; border: 1px solid #d3d4cc; border-bottom-width: 2px; border-radius: 4px; color: var(--quiet); font-size: 8px; }
-    .sheet-settings { display: flex; align-items: center; gap: 6px; margin-left: auto; }
     .sheet-close { margin-left: 12px; color: var(--quiet); }
     .editor-layout { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 540px; }
-    .editor-layout.settings-open { grid-template-columns: minmax(0, 1fr) 340px; }
     .writing { padding: 28px 34px 24px; }
     .task-title-input { width: 100%; padding: 0 0 14px; border: 0; border-bottom: 1px solid var(--line); outline: 0; background: transparent; color: var(--ink); font-family: "New York", Georgia, serif; font-size: 30px; font-weight: 700; }
     .field-heading { display: flex; justify-content: space-between; margin-top: 22px; }
@@ -189,13 +187,8 @@
     .grip { margin-left: auto; color: #b0b3aa; }
     .add-subtask { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 37px; margin-top: 10px; padding: 0 10px; border: 1px dashed #d2d3cb; border-radius: 6px; background: transparent; color: var(--quiet); font-size: 10px; text-align: left; }
     .add-symbol { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); color: var(--acid); }
-    .task-settings { display: none; padding: 19px; border-left: 1px solid var(--line); background: #f1f1ec; }
-    .settings-open .task-settings { display: block; }
-    .task-settings h3 { margin: 0 0 4px; font-size: 12px; }
-    .task-settings > p { margin: 0 0 12px; color: var(--quiet); font-size: 8px; }
-    .mini-map { width: 100%; aspect-ratio: 1; }
-    .setting-row { display: flex; align-items: center; min-height: 39px; border-bottom: 1px solid #dddED6; color: var(--quiet); font-size: 9px; }
-    .setting-value { margin-left: auto; padding: 5px 7px; border-radius: 4px; background: white; color: var(--ink); font-weight: 700; }
+    .inline-properties { display:flex; align-items:center; gap:9px; margin-top:18px; padding-top:14px; border-top:1px solid var(--line); color:var(--muted); font-size:10px; }
+    .inline-property { display:inline-flex; align-items:center; min-height:28px; padding:0 9px; border:1px solid var(--line); border-radius:5px; background:var(--raised); }
     .sheet-foot { display: flex; align-items: center; height: 58px; padding: 0 20px; border-top: 1px solid var(--line); background: #f5f5f1; }
     .sheet-hint { color: var(--quiet); font-size: 8px; }
     .sheet-foot .button:first-of-type { margin-left: auto; }
@@ -328,12 +321,11 @@
 
       <section class="screen editor-screen" id="editorScreen" data-screen-panel="editor">
         <article class="editor-sheet">
-          <header class="sheet-head"><b>编辑任务</b><span class="kbd">⌘ N</span><button class="button sheet-settings" id="settingsToggle">⚙ 任务设置</button><span class="sheet-close">×</span></header>
+          <header class="sheet-head"><b>编辑任务</b><span class="kbd">⌘ ↩</span><span class="sheet-close">×</span></header>
           <div class="editor-layout" id="editorLayout">
             <main class="writing"><input class="task-title-input" aria-label="任务标题" value="完成产品发布方案"><div class="field-heading"><b>任务描述</b><span>支持轻量 Markdown</span></div><textarea class="description" aria-label="任务描述">整理产品发布的目标、受众与核心信息，形成一份可以直接交给设计和运营协作的方案。
 
-完成标准：发布节奏、渠道、风险预案均可直接执行。</textarea><section class="subtask-editor"><div class="field-heading"><b>子任务</b><span>2 / 4 完成</span></div><div class="subtask-edit-row"><i class="check"></i>确认定价假设<span class="grip">≡</span></div><div class="subtask-edit-row"><i class="check"></i>整理发布渠道<span class="grip">≡</span></div><div class="subtask-edit-row"><i class="check"></i>准备风险预案<span class="grip">≡</span></div><button class="add-subtask"><span class="add-symbol">＋</span>添加一个子任务</button></section></main>
-            <aside class="task-settings"><h3>任务设置</h3><p>优先级位于其他管理属性上方。</p><div class="priority-map mini-map" aria-label="任务设置中的优先级地图"><span class="zone-label zone-plan">重点规划</span><span class="zone-label zone-act">立即处理</span><span class="zone-label zone-defer">稍后处理</span><span class="zone-label zone-delegate">适当委派</span><span class="task-marker selected" data-u="3" data-i="3" style="left:93%;top:7%">+3</span></div><div class="setting-row">任务日期<span class="setting-value">明天 18:00</span></div><div class="setting-row">预计时长<span class="setting-value">2 小时</span></div><div class="setting-row">所属项目<span class="setting-value">产品发布</span></div><div class="setting-row">完成状态<span class="setting-value">未完成</span></div><div class="setting-row">标签<span class="setting-value">策略 · 高专注</span></div></aside>
+完成标准：发布节奏、渠道、风险预案均可直接执行。</textarea><section class="subtask-editor"><div class="field-heading"><b>子任务</b><span>2 / 4 完成</span></div><div class="subtask-edit-row"><i class="check"></i>确认定价假设<span class="grip">≡</span></div><div class="subtask-edit-row"><i class="check"></i>整理发布渠道 <span class="pill">图片</span><span class="grip">≡</span></div><div class="subtask-edit-row"><i class="check"></i>准备风险预案<span class="grip">≡</span></div><button class="add-subtask"><span class="add-symbol">＋</span>添加一个子任务 · ⌘ ↩</button></section><div class="inline-properties"><span class="inline-property">▣ 高优</span><span class="inline-property">启动时间</span><span>→</span><span class="inline-property">结束时间 · 提醒</span><span class="inline-property">标签 2</span></div></main>
           </div>
           <footer class="sheet-foot"><span class="sheet-hint">⌘ ↩ 保存　Esc 取消</span><button class="button">取消</button><button class="button primary" style="margin-left:8px">保存任务</button></footer>
         </article>
@@ -381,13 +373,6 @@
     };
     aiToggle.addEventListener("change", applyAIState);
     applyAIState();
-
-    const settingsToggle = document.getElementById("settingsToggle");
-    const editorLayout = document.getElementById("editorLayout");
-    settingsToggle.addEventListener("click", () => {
-      const isOpen = editorLayout.classList.toggle("settings-open");
-      settingsToggle.setAttribute("aria-pressed", String(isOpen));
-    });
 
     const mainMap = document.getElementById("mainMap");
     const marker = document.getElementById("draggableMarker");

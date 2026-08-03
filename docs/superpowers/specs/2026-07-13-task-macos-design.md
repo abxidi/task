@@ -125,7 +125,7 @@ Task 是一款原生 macOS 个人任务管理应用。它面向需要长期管�
 2. 任务描述，支持轻量 Markdown 文本和链接识别。
 3. 子任务列表和快速创建输入框。
 
-子任务支持勾选、编辑、删除和拖拽排序。未完成子任务始终位于已完成子任务之前；勾选完成后自动移到列表末尾，取消完成后自动移到列表开头。输入框按 `Return` 创建当前子任务并继续创建下一项。
+子任务支持勾选、编辑、删除、拖拽排序和粘贴本地图片缩略图。未完成子任务始终位于已完成子任务之前；勾选完成后自动移到列表末尾，取消完成后自动移到列表开头。子任务输入框按 `Command-Return` 创建当前子任务并继续创建下一项。
 
 用户只输入标题即可保存。标题前显示紧凑优先级入口，点击仅展开正方形坐标盘；标签和任务日期置于编辑器底部的内联属性区。
 
@@ -136,7 +136,7 @@ Task 是一款原生 macOS 个人任务管理应用。它面向需要长期管�
 新任务默认值：
 
 - 坐标：`(0, 0)`。
-- 日期与提醒：无。
+- 启动时间、结束时间与提醒：无；结束时间复用 `dueAt` 存储，提醒在结束时间触发。
 - 预计时长：无。
 - 项目：无项目。
 - 完成状态：未完成。
@@ -147,9 +147,16 @@ Task 是一款原生 macOS 个人任务管理应用。它面向需要长期管�
 ### 5.3 快捷操作
 
 - `Command-N`：新建任务。
-- `Command-Return`：保存任务。
+- `Command-Return`：在子任务输入框中创建当前子任务。
 - `Escape`：关闭；存在未保存修改时确认。
 - `Command-Shift-P`：打开标题前优先级入口的坐标盘。
+
+### 5.5 正在做
+
+- 应用提供独立于任务列表、项目看板和完成状态的“正在做”空间。
+- 用户从既有任务加入正在做空间；加入、移出和修改正在做状态均不得改变任务的项目、泳道或完成状态。
+- 一个任务最多有一条正在做记录；正在做空间可同时容纳多项任务。
+- 每条记录的状态为“专注、暂停、阻塞、等待”，并可编辑且始终展示本地备注。
 
 ### 5.4 全局唤起快捷键
 
@@ -244,10 +251,11 @@ AI 输出使用严格结构化数据模型。解析失败、超时、认证失�
 - `id: UUID`
 - `title: String`
 - `details: String`
+- `startAt: Date?`
 - `urgency: Int`，范围 `-3...3`
 - `importance: Int`，范围 `-3...3`
-- `dueAt: Date?`
-- `reminderAt: Date?`
+- `dueAt: Date?`，作为结束时间
+- `reminderAt: Date?`，结束时提醒
 - `estimatedMinutes: Int?`
 - `isCompleted: Bool`
 - `completedAt: Date?`
@@ -267,6 +275,24 @@ AI 输出使用严格结构化数据模型。解析失败、超时、认证失�
 - `isCompleted: Bool`
 - `order: Int`
 - `createdAt: Date`
+- `task: TaskItem`
+- `attachments: [SubtaskAttachment]`
+
+### SubtaskAttachment
+
+- `id: UUID`
+- `imageData: Data`，仅保存经过尺寸和体积限制处理后的本地图片
+- `thumbnailData: Data`
+- `createdAt: Date`
+- `subtask: Subtask`
+
+### FocusEntry
+
+- `id: UUID`
+- `state: FocusState`，取值为 `focused`、`paused`、`blocked`、`waiting`
+- `note: String`
+- `createdAt: Date`
+- `updatedAt: Date`
 - `task: TaskItem`
 
 ### Project
@@ -294,7 +320,7 @@ AI 输出使用严格结构化数据模型。解析失败、超时、认证失�
 - `colorHex: String?`
 - `tasks: [TaskItem]`
 
-任务坐标和预计时长在写入前验证范围。无项目的任务使用本地任务列表的泳道，`project` 为 `nil`。项目任务进入完成列时，`isCompleted` 必须为 `true`；离开完成列时必须为 `false`。删除项目时，任务默认移回无项目；只有用户明确选择时才级联删除。
+任务坐标和预计时长在写入前验证范围；存在启动和结束时间时，启动时间不得晚于结束时间。无项目的任务使用本地任务列表的泳道，`project` 为 `nil`。项目任务进入完成列时，`isCompleted` 必须为 `true`；离开完成列时必须为 `false`。删除项目时，任务默认移回无项目；只有用户明确选择时才级联删除。子任务图片随 JSON 备份导出和恢复；API Key、AI 配置与本地通知授权状态仍不得导出。
 
 ## 9. 技术架构
 
