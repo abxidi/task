@@ -9,6 +9,7 @@ public final class Subtask {
     public var order: Int
     public var createdAt: Date
     public var task: TaskItem?
+    @Relationship(deleteRule: .cascade, inverse: \SubtaskAttachment.subtask) public var attachments: [SubtaskAttachment]
 
     public init(id: UUID = UUID(), title: String, order: Int, createdAt: Date = .now) {
         self.id = id
@@ -16,5 +17,6 @@ public final class Subtask {
         self.isCompleted = false
         self.order = order
         self.createdAt = createdAt
+        self.attachments = []
     }
 }

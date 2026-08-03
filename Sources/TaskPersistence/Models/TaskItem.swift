@@ -6,6 +6,7 @@ public final class TaskItem {
     @Attribute(.unique) public var id: UUID
     public var title: String
     public var details: String
+    public var startAt: Date?
     public var urgency: Int
     public var importance: Int
     public var dueAt: Date?
@@ -21,11 +22,13 @@ public final class TaskItem {
     public var boardColumn: BoardColumn?
     @Relationship(deleteRule: .cascade, inverse: \Subtask.task) public var subtasks: [Subtask]
     @Relationship(inverse: \Tag.tasks) public var tags: [Tag]
+    @Relationship(deleteRule: .cascade, inverse: \FocusEntry.task) public var focusEntry: FocusEntry?
 
     public init(id: UUID = UUID(), title: String, now: Date = .now) {
         self.id = id
         self.title = title
         self.details = ""
+        self.startAt = nil
         self.urgency = 0
         self.importance = 0
         self.isCompleted = false
