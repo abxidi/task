@@ -51,4 +51,29 @@ final class TaskDatePickerTests: XCTestCase {
     func testClearRemovesBothTaskDateAndReminder() {
         XCTAssertEqual(TaskDateCommit.cleared, TaskDateCommit(dueAt: nil, reminderAt: nil))
     }
+
+    func testEndTimeCommitTargetsReminderAtTheEndOnly() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let end = Date(timeIntervalSince1970: 2_000)
+
+        XCTAssertEqual(
+            TaskDateRangeCommit.confirmed(startAt: start, endAt: end, isEndReminderEnabled: true),
+            TaskDateRangeCommit(startAt: start, dueAt: end, reminderAt: end)
+        )
+    }
+
+    func testCompactCalendarUsesAStableSixWeekGrid() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))
+        calendar.firstWeekday = 1
+        let august = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 8, day: 1)))
+
+        let days = TaskDateCalendarGrid.days(for: august, calendar: calendar)
+
+        XCTAssertEqual(days.count, 42)
+        XCTAssertEqual(calendar.component(.month, from: days.first!), 7)
+        XCTAssertEqual(calendar.component(.day, from: days.first!), 26)
+        XCTAssertEqual(calendar.component(.month, from: days.last!), 9)
+        XCTAssertEqual(calendar.component(.day, from: days.last!), 5)
+    }
 }

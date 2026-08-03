@@ -3,6 +3,7 @@ import Foundation
 public struct TaskDraft: Equatable, Sendable {
     public var title: String
     public var details: String
+    public var startAt: Date?
     public var coordinate: PriorityCoordinate
     public var dueAt: Date?
     public var reminderAt: Date?
@@ -10,6 +11,7 @@ public struct TaskDraft: Equatable, Sendable {
     public var isCompleted: Bool
     public var subtasks: [String]
     public var subtaskCompletion: [Bool]
+    public var subtaskIDs: [UUID]
     public var projectID: UUID?
     public var boardColumnID: UUID?
     public var tagNames: [String]
@@ -17,6 +19,7 @@ public struct TaskDraft: Equatable, Sendable {
     public init(
         title: String,
         details: String = "",
+        startAt: Date? = nil,
         coordinate: PriorityCoordinate = .init(uncheckedUrgency: 0, importance: 0),
         dueAt: Date? = nil,
         reminderAt: Date? = nil,
@@ -24,12 +27,14 @@ public struct TaskDraft: Equatable, Sendable {
         isCompleted: Bool = false,
         subtasks: [String] = [],
         subtaskCompletion: [Bool] = [],
+        subtaskIDs: [UUID] = [],
         projectID: UUID? = nil,
         boardColumnID: UUID? = nil,
         tagNames: [String] = []
     ) {
         self.title = title
         self.details = details
+        self.startAt = startAt
         self.coordinate = coordinate
         self.dueAt = dueAt
         self.reminderAt = reminderAt
@@ -37,6 +42,7 @@ public struct TaskDraft: Equatable, Sendable {
         self.isCompleted = isCompleted
         self.subtasks = subtasks
         self.subtaskCompletion = subtaskCompletion
+        self.subtaskIDs = Self.alignedSubtaskIDs(subtaskIDs, count: subtasks.count)
         self.projectID = projectID
         self.boardColumnID = boardColumnID
         self.tagNames = tagNames
@@ -46,16 +52,21 @@ public struct TaskDraft: Equatable, Sendable {
         var copy = self
         copy.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !copy.title.isEmpty else { throw TaskDraftError.emptyTitle }
-        let normalizedSubtasks = subtasks.enumerated().compactMap { index, title -> (String, Bool)? in
+        let normalizedSubtasks = subtasks.enumerated().compactMap { index, title -> (UUID, String, Bool)? in
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { return nil }
-            return (trimmed, index < subtaskCompletion.count ? subtaskCompletion[index] : false)
+            let id = index < subtaskIDs.count ? subtaskIDs[index] : UUID()
+            return (id, trimmed, index < subtaskCompletion.count ? subtaskCompletion[index] : false)
         }
-        copy.subtasks = normalizedSubtasks.map(\.0)
-        copy.subtaskCompletion = normalizedSubtasks.map(\.1)
+        copy.subtaskIDs = normalizedSubtasks.map(\.0)
+        copy.subtasks = normalizedSubtasks.map(\.1)
+        copy.subtaskCompletion = normalizedSubtasks.map(\.2)
         copy.normalizeSubtaskOrdering()
         copy.tagNames = tagNames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
         if let minutes = estimatedMinutes, minutes <= 0 { throw TaskDraftError.invalidEstimate }
+        if let startAt = startAt, let dueAt = dueAt, startAt > dueAt {
+            throw TaskDraftError.invalidTimeRange
+        }
         return copy
     }
 
@@ -65,13 +76,16 @@ public struct TaskDraft: Equatable, Sendable {
 
         let title = subtasks.remove(at: index)
         let wasCompleted = index < subtaskCompletion.count ? subtaskCompletion.remove(at: index) : false
+        let id = index < subtaskIDs.count ? subtaskIDs.remove(at: index) : UUID()
 
         if wasCompleted {
             subtasks.insert(title, at: 0)
             subtaskCompletion.insert(false, at: 0)
+            subtaskIDs.insert(id, at: 0)
         } else {
             subtasks.append(title)
             subtaskCompletion.append(true)
+            subtaskIDs.append(id)
         }
     }
 
@@ -80,15 +94,26 @@ public struct TaskDraft: Equatable, Sendable {
         let insertionIndex = subtaskCompletion.firstIndex(of: true) ?? subtasks.endIndex
         subtasks.insert(title, at: insertionIndex)
         subtaskCompletion.insert(false, at: insertionIndex)
+        subtaskIDs.insert(UUID(), at: insertionIndex)
     }
 
     public mutating func normalizeSubtaskOrdering() {
         let entries = subtasks.enumerated().map { index, title in
-            (title: title, isCompleted: index < subtaskCompletion.count ? subtaskCompletion[index] : false)
+            (
+                id: index < subtaskIDs.count ? subtaskIDs[index] : UUID(),
+                title: title,
+                isCompleted: index < subtaskCompletion.count ? subtaskCompletion[index] : false
+            )
         }
         let ordered = SubtaskOrder.incompleteFirst(entries) { $0.isCompleted }
+        subtaskIDs = ordered.map(\.id)
         subtasks = ordered.map(\.title)
         subtaskCompletion = ordered.map(\.isCompleted)
+    }
+
+    private static func alignedSubtaskIDs(_ ids: [UUID], count: Int) -> [UUID] {
+        if ids.count >= count { return Array(ids.prefix(count)) }
+        return ids + Array(repeating: (), count: count - ids.count).map { _ in UUID() }
     }
 }
 
@@ -113,4 +138,5 @@ public enum SubtaskOrder {
 public enum TaskDraftError: Error, Equatable {
     case emptyTitle
     case invalidEstimate
+    case invalidTimeRange
 }

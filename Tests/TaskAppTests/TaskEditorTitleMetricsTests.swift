@@ -32,9 +32,8 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.minimumHeight, 40)
     }
 
-    func testAddedSubtasksAlignWithTheNewSubtaskIcon() {
-        XCTAssertTrue(TaskEditorSubtaskEntryStyle.usesSharedListRows)
-        XCTAssertEqual(TaskEditorSubtaskEntryStyle.listRowLeadingInset, 10)
+    func testAddedSubtasksUseTheUnnestedEditorRows() {
+        XCTAssertFalse(TaskEditorSubtaskEntryStyle.usesSharedListRows)
     }
 
     func testPriorityEntryUsesNormalAndHighPriorityLabels() {

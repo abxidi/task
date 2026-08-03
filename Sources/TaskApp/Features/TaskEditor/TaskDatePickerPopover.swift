@@ -1,6 +1,20 @@
 import SwiftUI
 
+enum TaskDatePickerMode {
+    case start
+    case end
+
+    var title: String {
+        switch self {
+        case .start: "启动时间"
+        case .end: "结束时间"
+        }
+    }
+}
+
 struct TaskDatePickerPopover: View {
+    let mode: TaskDatePickerMode
+    @Binding private var startAt: Date?
     @Binding private var dueAt: Date?
     @Binding private var reminderAt: Date?
     let onDismiss: () -> Void
@@ -12,14 +26,24 @@ struct TaskDatePickerPopover: View {
     private let calendar = Calendar.autoupdatingCurrent
 
     init(
+        mode: TaskDatePickerMode,
+        startAt: Binding<Date?>,
         dueAt: Binding<Date?>,
         reminderAt: Binding<Date?>,
         onDismiss: @escaping () -> Void
     ) {
+        self.mode = mode
+        _startAt = startAt
         _dueAt = dueAt
         _reminderAt = reminderAt
         self.onDismiss = onDismiss
-        let initialDate = dueAt.wrappedValue ?? reminderAt.wrappedValue ?? .now
+        let initialDate: Date
+        switch mode {
+        case .start:
+            initialDate = startAt.wrappedValue ?? .now
+        case .end:
+            initialDate = dueAt.wrappedValue ?? reminderAt.wrappedValue ?? .now
+        }
         let calendar = Calendar.autoupdatingCurrent
         _selectedDay = State(initialValue: initialDate)
         _selectedHour = State(initialValue: calendar.component(.hour, from: initialDate))
@@ -28,38 +52,51 @@ struct TaskDatePickerPopover: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            quickChoices
-                .frame(width: 132)
-
-            Divider()
-
-            VStack(spacing: 0) {
+        Group {
+            if mode == .end {
                 HStack(spacing: 0) {
-                    DatePicker(
-                        "选择任务日期",
-                        selection: $selectedDay,
-                        displayedComponents: .date
-                    )
-                    .labelsHidden()
-                    .datePickerStyle(.graphical)
-                    .frame(width: 330, height: 300)
-                    .padding(12)
-
+                    quickChoices
+                        .frame(width: 132)
                     Divider()
-
-                    TaskDateTimePicker(hour: $selectedHour, minute: $selectedMinute)
-                        .frame(width: 154, height: 324)
+                    calendarAndTime
                 }
+            } else {
+                calendarAndTime
+            }
+        }
+        .background(TaskDesignTokens.panel)
+    }
+
+    private var calendarAndTime: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                TaskDateCalendarPicker(
+                    selectedDay: $selectedDay,
+                    range: dateRange
+                )
+                .frame(
+                    width: TaskDatePopoverLayout.calendarWidth(for: mode),
+                    height: TaskDatePopoverLayout.contentHeight(for: mode)
+                )
 
                 Divider()
 
-                footer
-                    .frame(height: 54)
+                TaskDateTimePicker(hour: $selectedHour, minute: $selectedMinute)
+                    .frame(
+                        width: TaskDatePopoverLayout.timeWidth(for: mode),
+                        height: TaskDatePopoverLayout.contentHeight(for: mode)
+                    )
             }
+
+            Divider()
+
+            footer
+                .frame(height: TaskDatePopoverLayout.footerHeight(for: mode))
         }
-        .frame(width: 644, height: 379)
-        .background(TaskDesignTokens.panel)
+        .frame(
+            width: TaskDatePopoverLayout.contentSize(for: mode).width,
+            height: TaskDatePopoverLayout.contentSize(for: mode).height
+        )
     }
 
     private var quickChoices: some View {
@@ -92,17 +129,19 @@ struct TaskDatePickerPopover: View {
             .frame(minHeight: 30)
             .background(TaskDesignTokens.sidebar, in: RoundedRectangle(cornerRadius: 5))
 
-            Toggle("开启提醒", isOn: $reminderEnabled)
-                .toggleStyle(.checkbox)
-                .controlSize(.small)
-                .font(.system(size: 11, weight: .medium))
-                .help("在任务日期到达时发送本地通知")
+            if mode == .end {
+                Toggle("结束时提醒", isOn: $reminderEnabled)
+                    .toggleStyle(.checkbox)
+                    .controlSize(.small)
+                    .font(.system(size: 11, weight: .medium))
+                    .help("在结束时间到达时发送本地通知")
+            }
 
             Spacer(minLength: 0)
 
-            if dueAt != nil {
+            if selectedValue != nil {
                 Button("清除") {
-                    apply(.cleared)
+                    clearSelection()
                     onDismiss()
                 }
                 .buttonStyle(.plain)
@@ -111,7 +150,7 @@ struct TaskDatePickerPopover: View {
             }
 
             Button("确定") {
-                apply(.confirmed(date: committedDate, reminderEnabled: reminderEnabled))
+                applyCommittedDate()
                 onDismiss()
             }
             .buttonStyle(.plain)
@@ -121,6 +160,7 @@ struct TaskDatePickerPopover: View {
             .frame(minHeight: 31)
             .background(TaskDesignTokens.ink, in: RoundedRectangle(cornerRadius: 5))
             .keyboardShortcut(.defaultAction)
+            .disabled(!isCommittedDateValid)
         }
         .padding(.horizontal, 12)
     }
@@ -139,8 +179,54 @@ struct TaskDatePickerPopover: View {
         selectedMinute = calendar.component(.minute, from: date)
     }
 
-    private func apply(_ commit: TaskDateCommit) {
-        dueAt = commit.dueAt
-        reminderAt = commit.reminderAt
+    private var dateRange: ClosedRange<Date> {
+        switch mode {
+        case .start:
+            return .distantPast...(dueAt ?? .distantFuture)
+        case .end:
+            return (startAt ?? .distantPast)...Date.distantFuture
+        }
+    }
+
+    private var selectedValue: Date? {
+        switch mode {
+        case .start: startAt
+        case .end: dueAt
+        }
+    }
+
+    private var isCommittedDateValid: Bool {
+        switch mode {
+        case .start:
+            return dueAt.map { committedDate <= $0 } ?? true
+        case .end:
+            return startAt.map { committedDate >= $0 } ?? true
+        }
+    }
+
+    private func applyCommittedDate() {
+        switch mode {
+        case .start:
+            startAt = committedDate
+        case .end:
+            let commit = TaskDateRangeCommit.confirmed(
+                startAt: startAt,
+                endAt: committedDate,
+                isEndReminderEnabled: reminderEnabled
+            )
+            startAt = commit.startAt
+            dueAt = commit.dueAt
+            reminderAt = commit.reminderAt
+        }
+    }
+
+    private func clearSelection() {
+        switch mode {
+        case .start:
+            startAt = nil
+        case .end:
+            dueAt = nil
+            reminderAt = nil
+        }
     }
 }

@@ -39,7 +39,7 @@ struct TaskDateTimePicker: View {
                                     weight: selection.wrappedValue == value ? .semibold : .regular
                                 ).monospacedDigit())
                                 .foregroundStyle(TaskDesignTokens.muted)
-                                .frame(maxWidth: .infinity, minHeight: 30)
+                                .frame(maxWidth: .infinity, minHeight: 27)
                                 .background(
                                     selection.wrappedValue == value ? TaskDesignTokens.sidebar : Color.clear,
                                     in: RoundedRectangle(cornerRadius: 5)

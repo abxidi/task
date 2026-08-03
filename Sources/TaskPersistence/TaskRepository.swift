@@ -101,6 +101,7 @@ public final class TaskRepository {
     private func apply(_ draft: TaskDraft, to item: TaskItem) {
         item.title = draft.title
         item.details = draft.details
+        item.startAt = draft.startAt
         item.urgency = draft.coordinate.urgency
         item.importance = draft.coordinate.importance
         item.dueAt = draft.dueAt
@@ -109,13 +110,21 @@ public final class TaskRepository {
         item.isCompleted = draft.isCompleted
         item.completedAt = draft.isCompleted ? (item.completedAt ?? .now) : nil
 
-        let existing = item.subtasks
-        for subtask in existing {
+        let requestedIDs = Set(draft.subtaskIDs)
+        let existingByID = Dictionary(uniqueKeysWithValues: item.subtasks.map { ($0.id, $0) })
+        for subtask in item.subtasks where !requestedIDs.contains(subtask.id) {
             context.delete(subtask)
         }
         item.subtasks = draft.subtasks.enumerated().map { index, title in
-            let subtask = Subtask(title: title, order: index)
-            subtask.isCompleted = index < draft.subtaskCompletion.count ? draft.subtaskCompletion[index] : false
+            let id = draft.subtaskIDs[index]
+            let subtask = existingByID[id] ?? Subtask(id: id, title: title, order: index)
+            subtask.title = title
+            subtask.order = index
+            subtask.isCompleted = draft.subtaskCompletion[index]
+            subtask.task = item
+            if existingByID[id] == nil {
+                context.insert(subtask)
+            }
             return subtask
         }
 

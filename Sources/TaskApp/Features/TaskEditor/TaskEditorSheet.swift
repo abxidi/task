@@ -108,14 +108,8 @@ struct TaskEditorSheet: View {
                     .contentShape(Rectangle())
                     .onTapGesture { openMarkdown() }
 
-                    SubtaskEditor(
-                        items: $model.draft.subtasks,
-                        completion: $model.draft.subtaskCompletion,
-                        onToggle: { model.draft.toggleSubtaskCompletion(at: $0) },
-                        onMove: moveSubtasks,
-                        onAdd: { model.draft.addSubtask($0) }
-                    )
-                    .padding(.top, 20)
+                    subtaskEditor
+                        .padding(.top, 20)
 
                     editorMetadata
                         .padding(.top, 28)
@@ -175,6 +169,23 @@ struct TaskEditorSheet: View {
         descriptionFocused || !model.draft.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    private var subtaskEditor: some View {
+        SubtaskEditor(
+            items: $model.draft.subtasks,
+            completion: $model.draft.subtaskCompletion,
+            ids: $model.draft.subtaskIDs,
+            onToggle: { model.draft.toggleSubtaskCompletion(at: $0) },
+            onMove: moveSubtasks,
+            onDelete: removeSubtask,
+            onAdd: { model.draft.addSubtask($0) },
+            attachments: attachments(for:),
+            onPasteImage: { subtaskID, image in
+                try addAttachment(image, to: subtaskID)
+            },
+            onDeleteAttachment: removeAttachment
+        )
+    }
+
     private var priorityEntry: some View {
         Button {
             isPriorityPickerPresented.toggle()
@@ -212,26 +223,10 @@ struct TaskEditorSheet: View {
             TaskTagEditor(tagNames: $model.draft.tagNames)
 
             TaskDateEditorRow(
+                startAt: $model.draft.startAt,
                 dueAt: $model.draft.dueAt,
                 reminderAt: $model.draft.reminderAt
             )
-
-            HStack(spacing: 12) {
-                Text("完成状态")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(TaskDesignTokens.muted)
-                Spacer()
-                Button {
-                    model.draft.isCompleted.toggle()
-                } label: {
-                    Image(systemName: model.draft.isCompleted ? "checkmark.square.fill" : "square")
-                        .font(.system(size: 15))
-                        .foregroundStyle(model.draft.isCompleted ? TaskDesignTokens.success : TaskDesignTokens.quiet)
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.plain)
-                .help(model.draft.isCompleted ? "标记为未完成" : "标记为已完成")
-            }
         }
     }
 
@@ -265,7 +260,38 @@ struct TaskEditorSheet: View {
     private func moveSubtasks(from source: IndexSet, to destination: Int) {
         model.draft.subtasks.move(fromOffsets: source, toOffset: destination)
         model.draft.subtaskCompletion.move(fromOffsets: source, toOffset: destination)
+        model.draft.subtaskIDs.move(fromOffsets: source, toOffset: destination)
         model.draft.normalizeSubtaskOrdering()
+    }
+
+    private func removeSubtask(at index: Int) {
+        guard model.draft.subtasks.indices.contains(index) else { return }
+        model.draft.subtasks.remove(at: index)
+        model.draft.subtaskCompletion.remove(at: index)
+        model.draft.subtaskIDs.remove(at: index)
+    }
+
+    private func attachments(for subtaskID: UUID) -> [SubtaskAttachment] {
+        guard let subtask = model.existing?.subtasks.first(where: { $0.id == subtaskID }) else {
+            return []
+        }
+        return subtask.attachments.sorted { $0.createdAt < $1.createdAt }
+    }
+
+    private func addAttachment(_ image: NSImage, to subtaskID: UUID) throws {
+        guard persistDraft(), let subtask = model.existing?.subtasks.first(where: { $0.id == subtaskID }) else {
+            return
+        }
+        let processed = try SubtaskImageProcessor.process(image)
+        try SubtaskAttachmentRepository(context: modelContext).add(
+            imageData: processed.imageData,
+            thumbnailData: processed.thumbnailData,
+            to: subtask
+        )
+    }
+
+    private func removeAttachment(_ attachment: SubtaskAttachment) throws {
+        try SubtaskAttachmentRepository(context: modelContext).remove(attachment)
     }
 
     private func openMarkdown() {

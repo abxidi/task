@@ -21,9 +21,7 @@ final class TaskEditorModel: ObservableObject {
         }
 
         if let existing {
-            var metadataDraft = draft
-            metadataDraft.details = existing.details
-            try repository.updateTask(existing, with: metadataDraft)
+            try repository.updateTask(existing, with: draft)
             return existing
         }
 
@@ -40,6 +38,7 @@ final class TaskEditorModel: ObservableObject {
         var draft = TaskDraft(
             title: item.title,
             details: item.details,
+            startAt: item.startAt,
             coordinate: .init(uncheckedUrgency: item.urgency, importance: item.importance),
             dueAt: item.dueAt,
             reminderAt: item.reminderAt,
@@ -47,6 +46,7 @@ final class TaskEditorModel: ObservableObject {
             isCompleted: item.isCompleted,
             subtasks: item.subtasks.sorted { $0.order < $1.order }.map(\.title),
             subtaskCompletion: item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted),
+            subtaskIDs: item.subtasks.sorted { $0.order < $1.order }.map(\.id),
             projectID: item.project?.id,
             boardColumnID: item.boardColumn?.id,
             tagNames: item.tags.map(\.name)

@@ -12,6 +12,17 @@ final class TaskDraftTests: XCTestCase {
         XCTAssertThrowsError(try TaskDraft(title: "   ").validated())
     }
 
+    func testStartTimeCannotBeLaterThanEndTime() {
+        let start = Date(timeIntervalSince1970: 200)
+        let end = Date(timeIntervalSince1970: 100)
+
+        XCTAssertThrowsError(
+            try TaskDraft(title: "时间冲突", startAt: start, dueAt: end).validated()
+        ) { error in
+            XCTAssertEqual(error as? TaskDraftError, .invalidTimeRange)
+        }
+    }
+
     func testValidatedSubtasksPlaceIncompleteItemsBeforeCompletedItems() throws {
         let draft = TaskDraft(
             title: "Plan",
@@ -49,5 +60,21 @@ final class TaskDraftTests: XCTestCase {
 
         XCTAssertEqual(draft.subtasks, ["待办", "新增", "已完成"])
         XCTAssertEqual(draft.subtaskCompletion, [false, false, true])
+    }
+
+    func testSubtaskIdentityMovesWithTheSubtask() {
+        let firstID = UUID()
+        let secondID = UUID()
+        var draft = TaskDraft(
+            title: "Plan",
+            subtasks: ["第一项", "第二项"],
+            subtaskCompletion: [false, false],
+            subtaskIDs: [firstID, secondID]
+        )
+
+        draft.toggleSubtaskCompletion(at: 0)
+
+        XCTAssertEqual(draft.subtasks, ["第二项", "第一项"])
+        XCTAssertEqual(draft.subtaskIDs, [secondID, firstID])
     }
 }

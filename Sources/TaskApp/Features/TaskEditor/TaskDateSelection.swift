@@ -71,3 +71,19 @@ struct TaskDateCommit: Equatable {
 
     static let cleared = Self(dueAt: nil, reminderAt: nil)
 }
+
+struct TaskDateRangeCommit: Equatable {
+    let startAt: Date?
+    let dueAt: Date?
+    let reminderAt: Date?
+
+    static func confirmed(startAt: Date?, endAt: Date?, isEndReminderEnabled: Bool) -> Self {
+        Self(
+            startAt: startAt,
+            dueAt: endAt,
+            reminderAt: isEndReminderEnabled ? endAt : nil
+        )
+    }
+
+    static let cleared = Self(startAt: nil, dueAt: nil, reminderAt: nil)
+}
