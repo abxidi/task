@@ -8,6 +8,7 @@ struct AppSidebar: View {
     @Query(filter: #Predicate<Project> { !$0.isArchived }, sort: \Project.createdAt)
     private var projects: [Project]
     @Query private var allTasks: [TaskItem]
+    @Query private var focusEntries: [FocusEntry]
     var isAIConfigured: Bool = false
 
     var body: some View {
@@ -20,6 +21,7 @@ struct AppSidebar: View {
             sectionLabel("工作台")
             navRow(.priorityMap, title: "优先级地图", symbol: "square.grid.3x3", count: openCount)
             navRow(.taskList, title: "任务列表", symbol: "checkmark.circle", count: openCount)
+            navRow(.focusPool, title: "正在做", symbol: "scope", count: focusEntries.count)
             navRow(.projectBoard, title: "项目看板", symbol: "rectangle.3.group")
             navRow(.insights, title: "数据洞察", symbol: "chart.xyaxis.line")
 

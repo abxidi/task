@@ -39,6 +39,8 @@ struct TaskAppShell: View {
                     TaskListScreen(initialScope: listScope) {
                         taskEditorCoordinator.present(.create)
                     }
+                case .focusPool:
+                    FocusPoolScreen()
                 case .projectBoard:
                     ProjectBoardScreen(isAIConfigured: isAIConfigured) {
                         taskEditorCoordinator.present(.create)
