@@ -212,6 +212,7 @@ struct BoardColumnView: View {
                 }
                 .animation(placeholderAnimation, value: targetPlaceholderIndex)
             }
+            .taskSubtleScrollIndicators()
 
             Button(action: onAddTask) {
                 Text("＋ 添加任务")

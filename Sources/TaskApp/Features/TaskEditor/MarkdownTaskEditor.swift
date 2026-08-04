@@ -17,6 +17,7 @@ struct MarkdownTaskEditor: View {
                 TextEditor(text: $session.details)
                     .font(.system(size: 15, design: .monospaced))
                     .scrollContentBackground(.hidden)
+                    .taskSubtleScrollIndicators()
                     .padding(18)
                 Divider()
                 MarkdownPreview(markdown: session.details)
@@ -66,7 +67,13 @@ struct MarkdownTaskEditor: View {
 
 private struct MarkdownPreview: View {
     let markdown: String
-    var body: some View { ScrollView { Text((try? AttributedString(markdown: markdown)) ?? AttributedString(markdown)).frame(maxWidth: .infinity, alignment: .leading) } }
+    var body: some View {
+        ScrollView {
+            Text((try? AttributedString(markdown: markdown)) ?? AttributedString(markdown))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .taskSubtleScrollIndicators()
+    }
 }
 
 enum MarkdownEditorLayout { static let usesExplicitSave = true; static let paneCount = 2 }

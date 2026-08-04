@@ -89,6 +89,7 @@ struct AIPlanningPanel: View {
                 }
                 .padding(16)
             }
+            .taskSubtleScrollIndicators()
         }
         .background(TaskDesignTokens.panel)
         .sheet(isPresented: $isConfirmingScope) {
@@ -153,6 +154,7 @@ struct AIPlanningPanel: View {
                     Text(task.title)
                 }
             }
+            .taskSubtleScrollIndicators()
             HStack {
                 TaskChromeButton(title: "取消") { isConfirmingScope = false }
                 Spacer()

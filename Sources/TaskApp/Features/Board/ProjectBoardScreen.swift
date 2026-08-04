@@ -192,6 +192,7 @@ struct ProjectBoardScreen: View {
                 .padding(.horizontal, 26)
                 .padding(.vertical, 25)
             }
+            .taskSubtleScrollIndicators()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(TaskDesignTokens.canvas)
 

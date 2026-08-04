@@ -79,6 +79,7 @@ struct InsightsScreen: View {
             .padding(.horizontal, 26)
             .padding(.vertical, 25)
         }
+        .taskSubtleScrollIndicators()
         .background(TaskDesignTokens.canvas)
     }
 

@@ -53,6 +53,7 @@ struct TaskDateTimePicker: View {
                 .padding(.horizontal, 7)
                 .padding(.vertical, 8)
             }
+            .taskSubtleScrollIndicators()
             .scrollIndicators(.hidden)
             .onAppear {
                 proxy.scrollTo(selection.wrappedValue, anchor: .center)

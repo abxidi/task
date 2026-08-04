@@ -100,6 +100,7 @@ struct TaskEditorSheet: View {
                             .font(.system(size: 15))
                             .foregroundStyle(TaskDesignTokens.muted)
                             .scrollContentBackground(.hidden)
+                            .taskSubtleScrollIndicators()
                             .focused($descriptionFocused)
                             .padding(.vertical, 8)
                     }
@@ -115,6 +116,7 @@ struct TaskEditorSheet: View {
                         .padding(.top, 28)
                 }
             }
+            .taskSubtleScrollIndicators()
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 64)
             .padding(.bottom, 24)

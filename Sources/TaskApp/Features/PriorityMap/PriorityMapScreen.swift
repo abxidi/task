@@ -335,6 +335,7 @@ struct PriorityMapScreen: View {
                     }
                     .padding(18)
                 }
+                .taskSubtleScrollIndicators()
             } else {
                 ContentUnavailableView("选择任务", systemImage: "hand.tap", description: Text("在地图上点击色块查看详情。"))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

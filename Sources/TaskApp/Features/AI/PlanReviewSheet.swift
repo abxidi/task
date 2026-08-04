@@ -42,6 +42,7 @@ struct PlanReviewSheet: View {
                 }
                 .padding(.vertical, 4)
             }
+            .taskSubtleScrollIndicators()
             HStack {
                 Button("取消") { dismiss() }
                 Spacer()

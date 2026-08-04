@@ -118,6 +118,7 @@ struct GeneralSettingsView: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
+        .taskSubtleScrollIndicators()
         .onAppear {
             synchronizeCustomShortcutFields()
             globalShortcutManager.refreshInputMonitoringPermission()
