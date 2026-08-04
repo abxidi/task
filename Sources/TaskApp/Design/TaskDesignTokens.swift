@@ -21,6 +21,7 @@ enum TaskDesignTokens {
     static let acid = Color(hex: 0xD8FF5B)
     static let danger = Color(hex: 0xD73D43)
     static let success = Color(hex: 0x23856A)
+    static let warning = Color(hex: 0xD5A623)
 
     // Zone labels
     static let zoneActBG = Color(hex: 0xFFE7E7)

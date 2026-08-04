@@ -49,7 +49,7 @@ final class BackupServiceTests: XCTestCase {
         container.mainContext.insert(attachment)
         _ = try FocusRepository(context: container.mainContext).upsert(
             task: task,
-            state: .paused,
+            state: .waiting,
             note: "等待评审"
         )
 
@@ -65,8 +65,81 @@ final class BackupServiceTests: XCTestCase {
         XCTAssertEqual(restoredTask.startAt, start)
         XCTAssertEqual(restoredTask.dueAt, end)
         XCTAssertEqual(restoredSubtask.attachments.first?.imageData, Data([0xA1]))
-        XCTAssertEqual(restoredFocus.state, .paused)
+        XCTAssertEqual(restoredFocus.state, .waiting)
         XCTAssertEqual(restoredFocus.note, "等待评审")
+    }
+
+    func testLegacyPausedFocusBackupImportsAsWaiting() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let taskID = UUID()
+        let envelope = BackupEnvelope(
+            exportedAt: .now,
+            projects: [],
+            columns: [],
+            tasks: [
+                BackupTask(
+                    id: taskID,
+                    title: "等待评审",
+                    details: "",
+                    urgency: 0,
+                    importance: 0,
+                    dueAt: nil,
+                    reminderAt: nil,
+                    estimatedMinutes: nil,
+                    isCompleted: false,
+                    completedAt: nil,
+                    previousBoardColumnID: nil,
+                    manualOrder: 0,
+                    createdAt: .now,
+                    updatedAt: .now,
+                    projectID: nil,
+                    boardColumnID: nil,
+                    tagIDs: []
+                )
+            ],
+            subtasks: [],
+            focusEntries: [
+                BackupFocusEntry(
+                    id: UUID(),
+                    taskID: taskID,
+                    stateRawValue: "paused",
+                    note: "等待评审",
+                    createdAt: .now,
+                    updatedAt: .now
+                )
+            ],
+            tags: []
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(envelope)
+        let service = BackupService(context: container.mainContext)
+
+        let validated = try service.validateImport(data)
+        try service.applyImport(validated)
+
+        let imported = try XCTUnwrap(try container.mainContext.fetch(FetchDescriptor<FocusEntry>()).first)
+        XCTAssertEqual(imported.state, .waiting)
+        XCTAssertEqual(imported.stateRawValue, "waiting")
+    }
+
+    func testExportNormalizesLegacyPausedFocusState() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let task = TaskItem(title: "等待评审")
+        let entry = FocusEntry(state: .focused)
+        entry.stateRawValue = "paused"
+        entry.task = task
+        task.focusEntry = entry
+        container.mainContext.insert(task)
+        container.mainContext.insert(entry)
+        try container.mainContext.save()
+
+        let exported = try BackupService(context: container.mainContext).exportSnapshot(now: .now)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let envelope = try decoder.decode(BackupEnvelope.self, from: exported)
+
+        XCTAssertEqual(envelope.focusEntries.first?.stateRawValue, "waiting")
     }
 
     func testRejectsUnsupportedSchemaAndWritesNothing() throws {

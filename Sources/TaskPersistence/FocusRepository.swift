@@ -32,6 +32,19 @@ public final class FocusRepository {
         try context.fetch(FetchDescriptor<FocusEntry>(sortBy: [SortDescriptor(\FocusEntry.updatedAt, order: .reverse)]))
     }
 
+    @discardableResult
+    public func migrateLegacyStates() throws -> Int {
+        let entries = try context.fetch(FetchDescriptor<FocusEntry>())
+        let legacyEntries = entries.filter { $0.stateRawValue == TaskFocusState.legacyPausedRawValue }
+        guard !legacyEntries.isEmpty else { return 0 }
+
+        for entry in legacyEntries {
+            entry.state = .waiting
+        }
+        try context.save()
+        return legacyEntries.count
+    }
+
     public func remove(_ entry: FocusEntry) throws {
         context.delete(entry)
         try context.save()

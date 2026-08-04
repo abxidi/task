@@ -54,4 +54,24 @@ final class FocusRepositoryTests: XCTestCase {
         XCTAssertTrue(task.isCompleted)
         XCTAssertEqual(task.urgency, 3)
     }
+
+    func testMigratingLegacyPausedStateWritesWaitingRawValue() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let task = TaskItem(title: "等待评审")
+        let entry = FocusEntry(state: .focused)
+        entry.stateRawValue = "paused"
+        entry.task = task
+        task.focusEntry = entry
+        container.mainContext.insert(task)
+        container.mainContext.insert(entry)
+        try container.mainContext.save()
+
+        XCTAssertEqual(entry.state, .waiting)
+        let migratedCount = try FocusRepository(context: container.mainContext).migrateLegacyStates()
+
+        XCTAssertEqual(migratedCount, 1)
+        XCTAssertEqual(entry.stateRawValue, "waiting")
+        XCTAssertEqual(entry.state, .waiting)
+        XCTAssertEqual(try FocusRepository(context: container.mainContext).migrateLegacyStates(), 0)
+    }
 }

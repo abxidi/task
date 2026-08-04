@@ -6,9 +6,8 @@ import TaskPersistence
 final class FocusPoolPresentationTests: XCTestCase {
     func testEveryFocusStateHasTheApprovedVisibleTitle() {
         XCTAssertEqual(FocusStatePresentation.title(for: .focused), "专注")
-        XCTAssertEqual(FocusStatePresentation.title(for: .paused), "暂停")
-        XCTAssertEqual(FocusStatePresentation.title(for: .blocked), "阻塞")
         XCTAssertEqual(FocusStatePresentation.title(for: .waiting), "等待")
+        XCTAssertEqual(FocusStatePresentation.title(for: .blocked), "阻塞")
     }
 
     func testFocusPoolSortsEntriesByTaskPriority() {
@@ -36,8 +35,11 @@ final class FocusPoolPresentationTests: XCTestCase {
     func testFocusStatesUseDistinctSelectionColors() {
         let tokens = TaskFocusState.allCases.map(FocusStatePresentation.selectionColorToken)
 
-        XCTAssertEqual(tokens.map(\.rawValue), ["green", "blue", "red", "magenta"])
+        XCTAssertEqual(tokens.map(\.rawValue), ["green", "yellow", "red"])
         XCTAssertEqual(Set(tokens).count, TaskFocusState.allCases.count)
+        XCTAssertTrue(FocusStatePresentation.usesDarkSelectionText(for: .waiting))
+        XCTAssertFalse(FocusStatePresentation.usesDarkSelectionText(for: .focused))
+        XCTAssertFalse(FocusStatePresentation.usesDarkSelectionText(for: .blocked))
     }
 
     func testCompletedTasksCannotBeAddedToFocusPool() {
@@ -79,7 +81,7 @@ final class FocusPoolPresentationTests: XCTestCase {
     }
 
     func testStatusControlAlignsWithTheNoteField() {
-        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 360)
+        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 270)
         XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 90)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesLeadingAlignment)
         XCTAssertFalse(FocusPoolPresentation.statusControlUsesTrailingSpacer)

@@ -107,7 +107,7 @@ public final class BackupService: BackupServicing {
                 return BackupFocusEntry(
                     id: entry.id,
                     taskID: taskID,
-                    stateRawValue: entry.stateRawValue,
+                    stateRawValue: entry.state.rawValue,
                     note: entry.note,
                     createdAt: entry.createdAt,
                     updatedAt: entry.updatedAt

@@ -5,16 +5,14 @@ import TaskPersistence
 
 enum FocusStateColorToken: String, Hashable {
     case green
-    case blue
+    case yellow
     case red
-    case magenta
 
     var color: Color {
         switch self {
         case .green: TaskDesignTokens.success
-        case .blue: TaskDesignTokens.projectCobalt
+        case .yellow: TaskDesignTokens.warning
         case .red: TaskDesignTokens.danger
-        case .magenta: TaskDesignTokens.projectMagenta
         }
     }
 }
@@ -23,23 +21,25 @@ enum FocusStatePresentation {
     static func title(for state: TaskFocusState) -> String {
         switch state {
         case .focused: "专注"
-        case .paused: "暂停"
-        case .blocked: "阻塞"
         case .waiting: "等待"
+        case .blocked: "阻塞"
         }
     }
 
     static func selectionColorToken(for state: TaskFocusState) -> FocusStateColorToken {
         switch state {
         case .focused: .green
-        case .paused: .blue
+        case .waiting: .yellow
         case .blocked: .red
-        case .waiting: .magenta
         }
     }
 
     static func selectionColor(for state: TaskFocusState) -> Color {
         selectionColorToken(for: state).color
+    }
+
+    static func usesDarkSelectionText(for state: TaskFocusState) -> Bool {
+        state == .waiting
     }
 }
 
@@ -61,7 +61,7 @@ enum FocusPoolPresentation {
     static let usesTwoColumnCard = true
     static let cardColumnSpacing: CGFloat = 20
     static let subtaskColumnMinWidth: CGFloat = 280
-    static let statusControlWidth: CGFloat = 360
+    static let statusControlWidth: CGFloat = 270
     static let statusSegmentWidth: CGFloat = 90
     static let statusControlFontSize: CGFloat = 11
     static let noteUsesPlainField = true
@@ -139,7 +139,11 @@ private struct FocusStateSegmentedControl: View {
     private func segmentLabel(title: String, state: TaskFocusState, isSelected: Bool) -> some View {
         Text(title)
             .font(.system(size: FocusPoolPresentation.statusControlFontSize, weight: .semibold))
-            .foregroundStyle(isSelected ? Color.white : TaskDesignTokens.ink)
+            .foregroundStyle(
+                isSelected && !FocusStatePresentation.usesDarkSelectionText(for: state)
+                    ? Color.white
+                    : TaskDesignTokens.ink
+            )
             .frame(width: FocusPoolPresentation.statusSegmentWidth, height: 30)
             .background(isSelected ? FocusStatePresentation.selectionColor(for: state) : Color.clear)
             .contentShape(Rectangle())
@@ -182,6 +186,7 @@ struct FocusPoolScreen: View {
             }
         }
         .background(TaskDesignTokens.canvas)
+        .onAppear(perform: migrateLegacyStates)
         .alert("操作失败", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -264,6 +269,14 @@ struct FocusPoolScreen: View {
     private func remove(_ entry: FocusEntry) {
         do {
             try FocusRepository(context: modelContext).remove(entry)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func migrateLegacyStates() {
+        do {
+            _ = try FocusRepository(context: modelContext).migrateLegacyStates()
         } catch {
             errorMessage = error.localizedDescription
         }
