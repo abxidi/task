@@ -38,6 +38,37 @@ public final class TaskRepository {
         try context.save()
     }
 
+    public func setSubtaskCompleted(_ subtask: Subtask, isCompleted: Bool) throws {
+        subtask.isCompleted = isCompleted
+        if let task = subtask.task {
+            let ordered = SubtaskOrder.incompleteFirst(task.subtasks, isCompleted: \.isCompleted)
+            for (index, item) in ordered.enumerated() {
+                item.order = index
+            }
+            task.updatedAt = .now
+        }
+        try context.save()
+    }
+
+    @discardableResult
+    public func addSubtask(to item: TaskItem, title: String) throws -> Subtask {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { throw TaskRepositoryError.emptySubtaskTitle }
+
+        let subtask = Subtask(title: trimmedTitle, order: item.subtasks.count)
+        let ordered = SubtaskOrder.incompleteFirst(item.subtasks + [subtask], isCompleted: \.isCompleted)
+        for (index, value) in ordered.enumerated() {
+            value.order = index
+        }
+
+        subtask.task = item
+        item.subtasks = ordered
+        item.updatedAt = .now
+        context.insert(subtask)
+        try context.save()
+        return subtask
+    }
+
     public func updatePriority(_ item: TaskItem, urgency: Int, importance: Int) throws {
         let coordinate = try PriorityCoordinate(urgency: urgency, importance: importance)
         item.urgency = coordinate.urgency
@@ -154,4 +185,5 @@ public final class TaskRepository {
 
 public enum TaskRepositoryError: Error, Equatable {
     case emptyTitle
+    case emptySubtaskTitle
 }
