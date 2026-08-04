@@ -49,6 +49,11 @@ struct FocusSubtaskItem: Identifiable, Equatable {
     let isCompleted: Bool
 }
 
+enum FocusSubtaskCompletionSource {
+    case checkbox
+    case title
+}
+
 enum FocusPoolPresentation {
     static let pageTitleFontSize: CGFloat = 26
     static let actionFontSize: CGFloat = 11
@@ -73,6 +78,10 @@ enum FocusPoolPresentation {
     static func incompleteSubtasks(from subtasks: [FocusSubtaskItem]) -> [FocusSubtaskItem] {
         SubtaskOrder.incompleteFirst(subtasks, isCompleted: \.isCompleted)
             .filter { !$0.isCompleted }
+    }
+
+    static func allowsSubtaskCompletion(from source: FocusSubtaskCompletionSource) -> Bool {
+        source == .checkbox
     }
 
     static func sortsByTaskPriority(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
@@ -375,23 +384,27 @@ private struct FocusEntryRow: View {
                     .foregroundStyle(TaskDesignTokens.quiet)
             } else {
                 ForEach(incompleteSubtasks) { subtask in
-                    Button {
-                        completeSubtask(subtask.id)
-                    } label: {
-                        HStack(alignment: .top, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Button {
+                            completeSubtask(subtask.id, from: .checkbox)
+                        } label: {
                             Image(systemName: "square")
                                 .font(.system(size: 13))
                                 .foregroundStyle(TaskDesignTokens.quiet)
                                 .frame(width: 18, height: 18)
-                            Text(subtask.title)
-                                .font(.system(size: 12))
-                                .foregroundStyle(TaskDesignTokens.muted)
-                                .lineLimit(2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
+                        .buttonStyle(.plain)
+                        .frame(width: 24, height: 24, alignment: .topLeading)
+                        .contentShape(Rectangle())
+                        .help("标记子任务为已完成")
+                        .accessibilityLabel("标记子任务为已完成：\(subtask.title)")
+
+                        Text(subtask.title)
+                            .font(.system(size: 12))
+                            .foregroundStyle(TaskDesignTokens.muted)
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("标记子任务为已完成：\(subtask.title)")
                 }
             }
 
@@ -441,8 +454,9 @@ private struct FocusEntryRow: View {
         )
     }
 
-    private func completeSubtask(_ id: UUID) {
-        guard let subtask = entry.task?.subtasks.first(where: { $0.id == id }) else { return }
+    private func completeSubtask(_ id: UUID, from source: FocusSubtaskCompletionSource) {
+        guard FocusPoolPresentation.allowsSubtaskCompletion(from: source),
+              let subtask = entry.task?.subtasks.first(where: { $0.id == id }) else { return }
         do {
             try TaskRepository(context: modelContext).setSubtaskCompleted(subtask, isCompleted: true)
         } catch {

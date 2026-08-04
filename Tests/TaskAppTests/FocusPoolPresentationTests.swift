@@ -73,6 +73,11 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertTrue(FocusPoolPresentation.subtasksUseCheckboxes)
     }
 
+    func testSubtaskCompletionCanOnlyBeTriggeredByItsCheckbox() {
+        XCTAssertTrue(FocusPoolPresentation.allowsSubtaskCompletion(from: .checkbox))
+        XCTAssertFalse(FocusPoolPresentation.allowsSubtaskCompletion(from: .title))
+    }
+
     func testStatusControlAlignsWithTheNoteField() {
         XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 360)
         XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 90)
