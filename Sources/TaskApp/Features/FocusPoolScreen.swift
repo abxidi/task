@@ -1,3 +1,4 @@
+import AppKit
 import SwiftData
 import SwiftUI
 import TaskDomain
@@ -65,10 +66,12 @@ enum FocusPoolPresentation {
     static let statusSegmentWidth: CGFloat = 90
     static let statusControlFontSize: CGFloat = 11
     static let noteUsesPlainField = true
+    static let noteUsesMultilineEditor = true
     static let statusControlUsesLeadingAlignment = true
     static let statusControlUsesTrailingSpacer = false
     static let statusControlUsesNativePicker = false
     static let subtasksUseCheckboxes = true
+    static let subtasksSupportReordering = true
     static let showsStatusSymbol = false
 
     static func canAddTask(isCompleted: Bool, hasFocusEntry: Bool) -> Bool {
@@ -357,13 +360,14 @@ private struct FocusEntryRow: View {
                     }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                TextField("备注", text: $note, axis: .vertical)
-                    .lineLimit(2...4)
+                TextEditor(text: $note)
                     .font(.system(size: 12))
                     .textFieldStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .taskSubtleScrollIndicators()
                     .padding(.horizontal, 10)
                     .padding(.vertical, 8)
-                    .frame(minHeight: 42, alignment: .topLeading)
+                    .frame(minHeight: 78, maxHeight: 140, alignment: .topLeading)
                     .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius))
                     .overlay(
                         RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
@@ -396,6 +400,7 @@ private struct FocusEntryRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(TaskDesignTokens.quiet)
             } else {
+                reorderDropZone(before: incompleteSubtasks[0].id)
                 ForEach(incompleteSubtasks) { subtask in
                     HStack(alignment: .top, spacing: 8) {
                         Button {
@@ -419,8 +424,21 @@ private struct FocusEntryRow: View {
                             },
                             onFailure: { errorMessage = $0.localizedDescription }
                         )
+
+                        Image(systemName: "line.3.horizontal")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(TaskDesignTokens.quiet)
+                            .help("拖动排序")
+                            .accessibilityLabel("拖动排序")
+                    }
+                    .onDrag {
+                        NSItemProvider(object: subtask.id.uuidString as NSString)
+                    }
+                    .dropDestination(for: String.self) { values, _ in
+                        moveSubtask(from: values, before: subtask.id)
                     }
                 }
+                reorderDropZone(after: incompleteSubtasks[incompleteSubtasks.count - 1].id)
             }
 
             if entry.task != nil {
@@ -494,6 +512,56 @@ private struct FocusEntryRow: View {
             newSubtaskTitle = ""
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func reorderDropZone(before id: UUID) -> some View {
+        Color.clear
+            .frame(height: 6)
+            .dropDestination(for: String.self) { values, _ in
+                moveSubtask(from: values, before: id)
+            }
+    }
+
+    private func reorderDropZone(after id: UUID) -> some View {
+        Color.clear
+            .frame(height: 6)
+            .dropDestination(for: String.self) { values, _ in
+                moveSubtask(from: values, after: id)
+            }
+    }
+
+    private func moveSubtask(from values: [String], before id: UUID) -> Bool {
+        guard let sourceID = values.first.flatMap(UUID.init(uuidString:)),
+              let source = entry.task?.subtasks.first(where: { $0.id == sourceID }),
+              let destination = entry.task?.subtasks.first(where: { $0.id == id }),
+              source.id != destination.id else {
+            return false
+        }
+
+        do {
+            try TaskRepository(context: modelContext).moveSubtask(source, before: destination)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    private func moveSubtask(from values: [String], after id: UUID) -> Bool {
+        guard let sourceID = values.first.flatMap(UUID.init(uuidString:)),
+              let source = entry.task?.subtasks.first(where: { $0.id == sourceID }),
+              let destination = entry.task?.subtasks.first(where: { $0.id == id }),
+              source.id != destination.id else {
+            return false
+        }
+
+        do {
+            try TaskRepository(context: modelContext).moveSubtask(source, after: destination)
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 

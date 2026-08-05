@@ -59,6 +59,38 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(item.subtasks.first?.title, "已修改内容")
     }
 
+    func testMovingAnIncompleteSubtaskPersistsItsNewOrderBeforeCompletedItems() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let repository = TaskRepository(context: container.mainContext)
+        let item = try repository.saveNewTask(
+            TaskDraft(
+                title: "正在做",
+                subtasks: ["先做", "中间", "后做", "已完成"],
+                subtaskCompletion: [false, false, false, true]
+            )
+        )
+        let middle = try XCTUnwrap(item.subtasks.first { $0.title == "中间" })
+        let after = try XCTUnwrap(item.subtasks.first { $0.title == "后做" })
+
+        try repository.moveSubtask(middle, after: after)
+
+        let ordered = item.subtasks.sorted { $0.order < $1.order }
+        XCTAssertEqual(ordered.map(\.title), ["先做", "后做", "中间", "已完成"])
+        XCTAssertEqual(ordered.map(\.isCompleted), [false, false, false, true])
+    }
+
+    func testMovingAnEarlierSubtaskBeforeALaterSubtaskKeepsTheTargetPosition() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let repository = TaskRepository(context: container.mainContext)
+        let item = try repository.saveNewTask(TaskDraft(title: "正在做", subtasks: ["第一项", "第二项", "第三项"]))
+        let first = try XCTUnwrap(item.subtasks.first { $0.title == "第一项" })
+        let third = try XCTUnwrap(item.subtasks.first { $0.title == "第三项" })
+
+        try repository.moveSubtask(first, before: third)
+
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["第二项", "第一项", "第三项"])
+    }
+
     func testSettingSubtaskCompletedMovesItAfterIncompleteSubtasks() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)

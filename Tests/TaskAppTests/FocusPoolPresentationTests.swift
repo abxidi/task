@@ -72,7 +72,9 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertTrue(FocusPoolPresentation.usesTwoColumnCard)
         XCTAssertEqual(FocusPoolPresentation.subtaskColumnMinWidth, 280)
         XCTAssertTrue(FocusPoolPresentation.noteUsesPlainField)
+        XCTAssertTrue(FocusPoolPresentation.noteUsesMultilineEditor)
         XCTAssertTrue(FocusPoolPresentation.subtasksUseCheckboxes)
+        XCTAssertTrue(FocusPoolPresentation.subtasksSupportReordering)
     }
 
     func testSubtaskCompletionCanOnlyBeTriggeredByItsCheckbox() {

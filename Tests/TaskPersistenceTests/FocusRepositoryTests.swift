@@ -55,6 +55,19 @@ final class FocusRepositoryTests: XCTestCase {
         XCTAssertEqual(task.urgency, 3)
     }
 
+    func testFocusNotePreservesLineBreaks() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let task = TaskItem(title: "多行备注")
+        container.mainContext.insert(task)
+        try container.mainContext.save()
+
+        let note = "第一行\n第二行\n第三行"
+        let entry = try FocusRepository(context: container.mainContext)
+            .upsert(task: task, state: .focused, note: note)
+
+        XCTAssertEqual(entry.note, note)
+    }
+
     func testMigratingLegacyPausedStateWritesWaitingRawValue() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let task = TaskItem(title: "等待评审")
