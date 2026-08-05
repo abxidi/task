@@ -72,6 +72,7 @@ enum FocusPoolPresentation {
     static let statusControlUsesNativePicker = false
     static let subtasksUseCheckboxes = true
     static let subtasksSupportReordering = true
+    static let subtasksShowInsertionIndicator = true
     static let showsStatusSymbol = false
 
     static func canAddTask(isCompleted: Bool, hasFocusEntry: Bool) -> Bool {
@@ -293,6 +294,7 @@ private struct FocusEntryRow: View {
     @State private var state: TaskFocusState
     @State private var note: String
     @State private var newSubtaskTitle = ""
+    @State private var insertionLocation: SubtaskReorderInsertionLocation?
     @State private var errorMessage: String?
 
     init(entry: FocusEntry, onRemove: @escaping () -> Void) {
@@ -400,7 +402,6 @@ private struct FocusEntryRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(TaskDesignTokens.quiet)
             } else {
-                reorderDropZone(before: incompleteSubtasks[0].id)
                 ForEach(incompleteSubtasks) { subtask in
                     HStack(alignment: .top, spacing: 8) {
                         Button {
@@ -436,6 +437,16 @@ private struct FocusEntryRow: View {
                     }
                     .dropDestination(for: String.self) { values, _ in
                         moveSubtask(from: values, before: subtask.id)
+                    } isTargeted: { isTargeted in
+                        updateInsertionLocation(
+                            isTargeted,
+                            for: .before(subtask.id)
+                        )
+                    }
+                    .overlay(alignment: .top) {
+                        if insertionLocation == .before(subtask.id) {
+                            SubtaskReorderInsertionIndicator()
+                        }
                     }
                 }
                 reorderDropZone(after: incompleteSubtasks[incompleteSubtasks.count - 1].id)
@@ -515,23 +526,37 @@ private struct FocusEntryRow: View {
         }
     }
 
-    private func reorderDropZone(before id: UUID) -> some View {
+    private func reorderDropZone(after id: UUID) -> some View {
         Color.clear
-            .frame(height: 6)
+            .frame(height: 8)
             .dropDestination(for: String.self) { values, _ in
-                moveSubtask(from: values, before: id)
+                moveSubtask(from: values, after: id)
+            } isTargeted: { isTargeted in
+                updateInsertionLocation(
+                    isTargeted,
+                    for: .after(id)
+                )
+            }
+            .overlay {
+                if insertionLocation == .after(id) {
+                    SubtaskReorderInsertionIndicator()
+                }
             }
     }
 
-    private func reorderDropZone(after id: UUID) -> some View {
-        Color.clear
-            .frame(height: 6)
-            .dropDestination(for: String.self) { values, _ in
-                moveSubtask(from: values, after: id)
-            }
+    private func updateInsertionLocation(
+        _ isTargeted: Bool,
+        for location: SubtaskReorderInsertionLocation
+    ) {
+        if isTargeted {
+            insertionLocation = location
+        } else if insertionLocation == location {
+            insertionLocation = nil
+        }
     }
 
     private func moveSubtask(from values: [String], before id: UUID) -> Bool {
+        defer { insertionLocation = nil }
         guard let sourceID = values.first.flatMap(UUID.init(uuidString:)),
               let source = entry.task?.subtasks.first(where: { $0.id == sourceID }),
               let destination = entry.task?.subtasks.first(where: { $0.id == id }),
@@ -549,6 +574,7 @@ private struct FocusEntryRow: View {
     }
 
     private func moveSubtask(from values: [String], after id: UUID) -> Bool {
+        defer { insertionLocation = nil }
         guard let sourceID = values.first.flatMap(UUID.init(uuidString:)),
               let source = entry.task?.subtasks.first(where: { $0.id == sourceID }),
               let destination = entry.task?.subtasks.first(where: { $0.id == id }),

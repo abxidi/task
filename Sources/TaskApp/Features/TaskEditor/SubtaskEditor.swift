@@ -18,6 +18,7 @@ struct SubtaskEditor: View {
     @State private var newTitle = ""
     @State private var attachmentRevision = 0
     @State private var attachmentError: String?
+    @State private var insertionLocation: SubtaskReorderInsertionLocation?
     @FocusState private var isNewFocused: Bool
 
     var body: some View {
@@ -31,6 +32,7 @@ struct SubtaskEditor: View {
 
             if !ids.isEmpty {
                 Divider()
+                reorderDropZone(after: ids[ids.count - 1])
             }
 
             compactInputRow
@@ -104,16 +106,36 @@ struct SubtaskEditor: View {
             NSItemProvider(object: id.uuidString as NSString)
         }
         .dropDestination(for: String.self) { values, _ in
-            guard let value = values.first,
-                  let sourceID = UUID(uuidString: value),
-                  let sourceIndex = ids.firstIndex(of: sourceID),
-                  let destinationIndex = ids.firstIndex(of: id),
-                  sourceID != id else {
-                return false
-            }
-            onMove(IndexSet(integer: sourceIndex), destinationIndex)
-            return true
+            moveSubtask(from: values, before: id)
+        } isTargeted: { isTargeted in
+            updateInsertionLocation(
+                isTargeted,
+                for: .before(id)
+            )
         }
+        .overlay(alignment: .top) {
+            if insertionLocation == .before(id) {
+                SubtaskReorderInsertionIndicator()
+            }
+        }
+    }
+
+    private func reorderDropZone(after id: UUID) -> some View {
+        Color.clear
+            .frame(height: 8)
+            .dropDestination(for: String.self) { values, _ in
+                moveSubtask(from: values, after: id)
+            } isTargeted: { isTargeted in
+                updateInsertionLocation(
+                    isTargeted,
+                    for: .after(id)
+                )
+            }
+            .overlay {
+                if insertionLocation == .after(id) {
+                    SubtaskReorderInsertionIndicator()
+                }
+            }
     }
 
     private func attachmentThumbnails(_ values: [SubtaskAttachment]) -> some View {
@@ -157,6 +179,43 @@ struct SubtaskEditor: View {
             get: { items[index] },
             set: { items[index] = $0 }
         )
+    }
+
+    private func updateInsertionLocation(
+        _ isTargeted: Bool,
+        for location: SubtaskReorderInsertionLocation
+    ) {
+        if isTargeted {
+            insertionLocation = location
+        } else if insertionLocation == location {
+            insertionLocation = nil
+        }
+    }
+
+    private func moveSubtask(from values: [String], before id: UUID) -> Bool {
+        defer { insertionLocation = nil }
+        guard let value = values.first,
+              let sourceID = UUID(uuidString: value),
+              let sourceIndex = ids.firstIndex(of: sourceID),
+              let destinationIndex = ids.firstIndex(of: id),
+              sourceID != id else {
+            return false
+        }
+        onMove(IndexSet(integer: sourceIndex), destinationIndex)
+        return true
+    }
+
+    private func moveSubtask(from values: [String], after id: UUID) -> Bool {
+        defer { insertionLocation = nil }
+        guard let value = values.first,
+              let sourceID = UUID(uuidString: value),
+              let sourceIndex = ids.firstIndex(of: sourceID),
+              let destinationIndex = ids.firstIndex(of: id),
+              sourceID != id else {
+            return false
+        }
+        onMove(IndexSet(integer: sourceIndex), destinationIndex + 1)
+        return true
     }
 
     private var compactInputRow: some View {
@@ -231,4 +290,6 @@ enum TaskEditorSubtaskEntryStyle {
     static let iconSize: CGFloat = 12
     static let iconFrameSize: CGFloat = 18
     static let minimumHeight: CGFloat = 40
+    static let showsReorderInsertionIndicator = true
+    static let supportsEndDropInsertion = true
 }

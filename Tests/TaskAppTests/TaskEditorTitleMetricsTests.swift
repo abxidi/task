@@ -36,6 +36,11 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertFalse(TaskEditorSubtaskEntryStyle.usesSharedListRows)
     }
 
+    func testTaskEditorSubtaskReorderingShowsInsertionIndicatorAtListEnd() {
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.showsReorderInsertionIndicator)
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.supportsEndDropInsertion)
+    }
+
     func testPriorityEntryUsesNormalAndHighPriorityLabels() {
         XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 0, importance: 0)), "正常")
         XCTAssertEqual(TaskEditorPriorityLabel.title(for: .init(uncheckedUrgency: 2, importance: 3)), "高优")

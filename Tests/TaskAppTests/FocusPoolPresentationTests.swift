@@ -77,6 +77,12 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertTrue(FocusPoolPresentation.subtasksSupportReordering)
     }
 
+    func testFocusSubtaskReorderingUsesSystemBlueInsertionIndicator() {
+        XCTAssertTrue(FocusPoolPresentation.subtasksShowInsertionIndicator)
+        XCTAssertEqual(SubtaskReorderPresentation.insertionIndicatorHeight, 2)
+        XCTAssertTrue(SubtaskReorderPresentation.insertionIndicatorUsesSystemBlue)
+    }
+
     func testSubtaskCompletionCanOnlyBeTriggeredByItsCheckbox() {
         XCTAssertTrue(FocusPoolPresentation.allowsSubtaskCompletion(from: .checkbox))
         XCTAssertFalse(FocusPoolPresentation.allowsSubtaskCompletion(from: .title))
