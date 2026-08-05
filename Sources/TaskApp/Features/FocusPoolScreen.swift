@@ -412,11 +412,13 @@ private struct FocusEntryRow: View {
                         .help("标记子任务为已完成")
                         .accessibilityLabel("标记子任务为已完成：\(subtask.title)")
 
-                        Text(subtask.title)
-                            .font(.system(size: 12))
-                            .foregroundStyle(TaskDesignTokens.muted)
-                            .lineLimit(2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        FocusSubtaskTitleEditor(
+                            subtask: subtask,
+                            onSave: { id, title in
+                                try updateSubtaskTitle(id, title: title)
+                            },
+                            onFailure: { errorMessage = $0.localizedDescription }
+                        )
                     }
                 }
             }
@@ -477,6 +479,11 @@ private struct FocusEntryRow: View {
         }
     }
 
+    private func updateSubtaskTitle(_ id: UUID, title: String) throws {
+        guard let subtask = entry.task?.subtasks.first(where: { $0.id == id }) else { return }
+        try TaskRepository(context: modelContext).updateSubtaskTitle(subtask, title: title)
+    }
+
     private func addSubtask() {
         guard let task = entry.task else { return }
         let title = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -496,6 +503,64 @@ private struct FocusEntryRow: View {
             _ = try FocusRepository(context: modelContext).upsert(task: task, state: state, note: note)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct FocusSubtaskTitleEditor: View {
+    let subtask: FocusSubtaskItem
+    let onSave: (UUID, String) throws -> Void
+    let onFailure: (Error) -> Void
+
+    @State private var title: String
+    @State private var persistedTitle: String
+    @FocusState private var isFocused: Bool
+
+    init(
+        subtask: FocusSubtaskItem,
+        onSave: @escaping (UUID, String) throws -> Void,
+        onFailure: @escaping (Error) -> Void
+    ) {
+        self.subtask = subtask
+        self.onSave = onSave
+        self.onFailure = onFailure
+        _title = State(initialValue: subtask.title)
+        _persistedTitle = State(initialValue: subtask.title)
+    }
+
+    var body: some View {
+        TextField("子任务", text: $title, axis: .vertical)
+            .textFieldStyle(.plain)
+            .font(.system(size: 12))
+            .foregroundStyle(TaskDesignTokens.muted)
+            .lineLimit(1...2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .focused($isFocused)
+            .onSubmit(commit)
+            .onChange(of: isFocused) { _, hasFocus in
+                if !hasFocus {
+                    commit()
+                }
+            }
+            .onDisappear(perform: commit)
+            .accessibilityLabel("编辑子任务：\(subtask.title)")
+            .accessibilityHint("按 Return 或移开焦点保存")
+    }
+
+    private func commit() {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedTitle != persistedTitle else {
+            title = persistedTitle
+            return
+        }
+
+        do {
+            try onSave(subtask.id, trimmedTitle)
+            title = trimmedTitle
+            persistedTitle = trimmedTitle
+        } catch {
+            title = persistedTitle
+            onFailure(error)
         }
     }
 }

@@ -50,6 +50,15 @@ public final class TaskRepository {
         try context.save()
     }
 
+    public func updateSubtaskTitle(_ subtask: Subtask, title: String) throws {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else { throw TaskRepositoryError.emptySubtaskTitle }
+
+        subtask.title = trimmedTitle
+        subtask.task?.updatedAt = .now
+        try context.save()
+    }
+
     @discardableResult
     public func addSubtask(to item: TaskItem, title: String) throws -> Subtask {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)

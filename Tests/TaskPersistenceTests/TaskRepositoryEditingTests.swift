@@ -47,6 +47,18 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(updated.attachments.first?.id, attachment.id)
     }
 
+    func testUpdatingSubtaskTitleTrimsAndPersistsTheNewTitle() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let repository = TaskRepository(context: container.mainContext)
+        let item = try repository.saveNewTask(TaskDraft(title: "正在做", subtasks: ["原始内容"]))
+        let subtask = try XCTUnwrap(item.subtasks.first)
+
+        try repository.updateSubtaskTitle(subtask, title: "  已修改内容  ")
+
+        XCTAssertEqual(subtask.title, "已修改内容")
+        XCTAssertEqual(item.subtasks.first?.title, "已修改内容")
+    }
+
     func testSettingSubtaskCompletedMovesItAfterIncompleteSubtasks() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)
