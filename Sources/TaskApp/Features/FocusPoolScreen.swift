@@ -79,13 +79,33 @@ enum FocusPoolPresentation {
         !isCompleted && !hasFocusEntry
     }
 
-    static func incompleteSubtasks(from subtasks: [FocusSubtaskItem]) -> [FocusSubtaskItem] {
-        SubtaskOrder.incompleteFirst(subtasks, isCompleted: \.isCompleted)
-            .filter { !$0.isCompleted }
+    static func subtasks(from subtasks: [FocusSubtaskItem]) -> [FocusSubtaskItem] {
+        subtasks
     }
 
     static func allowsSubtaskCompletion(from source: FocusSubtaskCompletionSource) -> Bool {
         source == .checkbox
+    }
+
+    static func completionActionTitle(for subtask: FocusSubtaskItem) -> String {
+        subtask.isCompleted ? "标记子任务为未完成" : "标记子任务为已完成"
+    }
+
+    static func checkboxSymbol(for subtask: FocusSubtaskItem) -> String {
+        subtask.isCompleted ? "checkmark.square.fill" : "square"
+    }
+
+    static func checkboxColor(for subtask: FocusSubtaskItem) -> Color {
+        subtask.isCompleted ? TaskDesignTokens.success : TaskDesignTokens.quiet
+    }
+
+    static func completionAccessibilityLabel(for subtask: FocusSubtaskItem) -> String {
+        completionActionTitle(for: subtask) + "：" + subtask.title
+    }
+
+    static func subtaskRowOpacity(for subtask: FocusSubtaskItem, draggingID: UUID?) -> Double {
+        if draggingID == subtask.id { return SubtaskReorderPresentation.sourceOpacity }
+        return subtask.isCompleted ? 0.58 : 1
     }
 
     static func sortsByTaskPriority(_ lhs: TaskItem, _ rhs: TaskItem) -> Bool {
@@ -312,7 +332,7 @@ private struct FocusEntryRow: View {
             Divider()
                 .frame(minHeight: 132)
 
-            incompleteSubtasksColumn
+            subtasksColumn
         }
         .padding(12)
         .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius))
@@ -388,75 +408,25 @@ private struct FocusEntryRow: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var incompleteSubtasksColumn: some View {
+    private var subtasksColumn: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text("未完成子任务")
+                Text("子任务")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(TaskDesignTokens.quiet)
-                Text("\(incompleteSubtasks.count)")
+                Text("\(incompleteSubtaskCount) / \(subtasks.count)")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(TaskDesignTokens.quiet)
                 Spacer(minLength: 0)
             }
 
-            if incompleteSubtasks.isEmpty {
-                Text("暂无未完成子任务")
+            if subtasks.isEmpty {
+                Text("暂无子任务")
                     .font(.system(size: 11))
                     .foregroundStyle(TaskDesignTokens.quiet)
             } else {
-                ForEach(incompleteSubtasks) { subtask in
-                    HStack(alignment: .top, spacing: 8) {
-                        Button {
-                            completeSubtask(subtask.id, from: .checkbox)
-                        } label: {
-                            Image(systemName: "square")
-                                .font(.system(size: 13))
-                                .foregroundStyle(TaskDesignTokens.quiet)
-                                .frame(width: 18, height: 18)
-                        }
-                        .buttonStyle(.plain)
-                        .frame(width: 24, height: 24, alignment: .topLeading)
-                        .contentShape(Rectangle())
-                        .help("标记子任务为已完成")
-                        .accessibilityLabel("标记子任务为已完成：\(subtask.title)")
-
-                        FocusSubtaskTitleEditor(
-                            subtask: subtask,
-                            onSave: { id, title in
-                                try updateSubtaskTitle(id, title: title)
-                            },
-                            onFailure: { errorMessage = $0.localizedDescription }
-                        )
-
-                        Image(systemName: "line.3.horizontal")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(TaskDesignTokens.quiet)
-                            .frame(width: 24, height: 24)
-                            .contentShape(Rectangle())
-                            .gesture(reorderGesture(for: subtask.id))
-                            .help("拖动排序")
-                            .accessibilityLabel("拖动排序")
-                    }
-                    .opacity(reorderCoordinator.sourceID == subtask.id ? SubtaskReorderPresentation.sourceOpacity : 1)
-                    .background {
-                        GeometryReader { proxy in
-                            Color.clear.preference(
-                                key: SubtaskReorderFramePreferenceKey.self,
-                                value: [subtask.id: proxy.frame(in: .global)]
-                            )
-                        }
-                    }
-                    .overlay(alignment: .top) {
-                        if reorderCoordinator.insertionLocation == .before(subtask.id) {
-                            SubtaskReorderInsertionIndicator()
-                        }
-                    }
-                    .overlay(alignment: .bottom) {
-                        if reorderCoordinator.insertionLocation == .after(subtask.id) {
-                            SubtaskReorderInsertionIndicator()
-                        }
-                    }
+                ForEach(subtasks) { subtask in
+                    subtaskRow(subtask)
                 }
             }
 
@@ -465,7 +435,62 @@ private struct FocusEntryRow: View {
             }
         }
         .frame(minWidth: FocusPoolPresentation.subtaskColumnMinWidth, maxWidth: .infinity, alignment: .leading)
-        .animation(.easeOut(duration: SubtaskReorderPresentation.reorderDuration), value: incompleteSubtasks)
+        .animation(.easeOut(duration: SubtaskReorderPresentation.reorderDuration), value: subtasks)
+    }
+
+    private func subtaskRow(_ subtask: FocusSubtaskItem) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Button {
+                toggleSubtaskCompletion(subtask.id, from: .checkbox)
+            } label: {
+                Image(systemName: FocusPoolPresentation.checkboxSymbol(for: subtask))
+                    .font(.system(size: 13))
+                    .foregroundStyle(FocusPoolPresentation.checkboxColor(for: subtask))
+                    .frame(width: 18, height: 18)
+            }
+            .buttonStyle(.plain)
+            .frame(width: 24, height: 24, alignment: .topLeading)
+            .contentShape(Rectangle())
+            .help(FocusPoolPresentation.completionActionTitle(for: subtask))
+            .accessibilityLabel(FocusPoolPresentation.completionAccessibilityLabel(for: subtask))
+
+            FocusSubtaskTitleEditor(
+                subtask: subtask,
+                isCompleted: subtask.isCompleted,
+                onSave: { id, title in
+                    try updateSubtaskTitle(id, title: title)
+                },
+                onFailure: { errorMessage = $0.localizedDescription }
+            )
+
+            Image(systemName: "line.3.horizontal")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(TaskDesignTokens.quiet)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+                .gesture(reorderGesture(for: subtask.id))
+                .help("拖动排序")
+                .accessibilityLabel("拖动排序")
+        }
+        .opacity(FocusPoolPresentation.subtaskRowOpacity(for: subtask, draggingID: reorderCoordinator.sourceID))
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: SubtaskReorderFramePreferenceKey.self,
+                    value: [subtask.id: proxy.frame(in: .global)]
+                )
+            }
+        }
+        .overlay(alignment: .top) {
+            if reorderCoordinator.insertionLocation == .before(subtask.id) {
+                SubtaskReorderInsertionIndicator()
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if reorderCoordinator.insertionLocation == .after(subtask.id) {
+                SubtaskReorderInsertionIndicator()
+            }
+        }
     }
 
     private var addSubtaskInput: some View {
@@ -499,19 +524,23 @@ private struct FocusEntryRow: View {
         )
     }
 
-    private var incompleteSubtasks: [FocusSubtaskItem] {
-        FocusPoolPresentation.incompleteSubtasks(
+    private var subtasks: [FocusSubtaskItem] {
+        FocusPoolPresentation.subtasks(
             from: entry.task?.subtasks.sorted { $0.order < $1.order }.map {
                 FocusSubtaskItem(id: $0.id, title: $0.title, isCompleted: $0.isCompleted)
             } ?? []
         )
     }
 
-    private func completeSubtask(_ id: UUID, from source: FocusSubtaskCompletionSource) {
+    private var incompleteSubtaskCount: Int {
+        subtasks.lazy.filter { !$0.isCompleted }.count
+    }
+
+    private func toggleSubtaskCompletion(_ id: UUID, from source: FocusSubtaskCompletionSource) {
         guard FocusPoolPresentation.allowsSubtaskCompletion(from: source),
               let subtask = entry.task?.subtasks.first(where: { $0.id == id }) else { return }
         do {
-            try TaskRepository(context: modelContext).setSubtaskCompleted(subtask, isCompleted: true)
+            try TaskRepository(context: modelContext).setSubtaskCompleted(subtask, isCompleted: !subtask.isCompleted)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -543,19 +572,26 @@ private struct FocusEntryRow: View {
                 }
                 reorderCoordinator.update(
                     location: value.location,
-                    orderedIDs: incompleteSubtasks.map(\.id),
+                    orderedIDs: reorderableSubtaskIDs(for: id),
                     frames: subtaskFrames
                 )
             }
             .onEnded { value in
                 reorderCoordinator.update(
                     location: value.location,
-                    orderedIDs: incompleteSubtasks.map(\.id),
+                    orderedIDs: reorderableSubtaskIDs(for: id),
                     frames: subtaskFrames
                 )
                 guard let move = reorderCoordinator.complete() else { return }
                 apply(move)
             }
+    }
+
+    private func reorderableSubtaskIDs(for sourceID: UUID) -> [UUID] {
+        guard let source = subtasks.first(where: { $0.id == sourceID }) else { return [] }
+        return subtasks
+            .filter { $0.isCompleted == source.isCompleted }
+            .map(\.id)
     }
 
     private func apply(_ move: SubtaskReorderMove) {
@@ -602,6 +638,7 @@ private struct FocusEntryRow: View {
 
 private struct FocusSubtaskTitleEditor: View {
     let subtask: FocusSubtaskItem
+    let isCompleted: Bool
     let onSave: (UUID, String) throws -> Void
     let onFailure: (Error) -> Void
 
@@ -611,10 +648,12 @@ private struct FocusSubtaskTitleEditor: View {
 
     init(
         subtask: FocusSubtaskItem,
+        isCompleted: Bool,
         onSave: @escaping (UUID, String) throws -> Void,
         onFailure: @escaping (Error) -> Void
     ) {
         self.subtask = subtask
+        self.isCompleted = isCompleted
         self.onSave = onSave
         self.onFailure = onFailure
         _title = State(initialValue: subtask.title)
@@ -625,7 +664,8 @@ private struct FocusSubtaskTitleEditor: View {
         TextField("子任务", text: $title, axis: .vertical)
             .textFieldStyle(.plain)
             .font(.system(size: 12))
-            .foregroundStyle(TaskDesignTokens.muted)
+            .foregroundStyle(isCompleted ? TaskDesignTokens.quiet : TaskDesignTokens.muted)
+            .strikethrough(isCompleted)
             .lineLimit(1...2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .focused($isFocused)
@@ -637,6 +677,7 @@ private struct FocusSubtaskTitleEditor: View {
             }
             .onDisappear(perform: commit)
             .accessibilityLabel("编辑子任务：\(subtask.title)")
+            .accessibilityValue(isCompleted ? "已完成" : "未完成")
             .accessibilityHint("按 Return 或移开焦点保存")
     }
 

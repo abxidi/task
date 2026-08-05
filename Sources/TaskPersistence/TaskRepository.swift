@@ -41,10 +41,6 @@ public final class TaskRepository {
     public func setSubtaskCompleted(_ subtask: Subtask, isCompleted: Bool) throws {
         subtask.isCompleted = isCompleted
         if let task = subtask.task {
-            let ordered = SubtaskOrder.incompleteFirst(task.subtasks, isCompleted: \.isCompleted)
-            for (index, item) in ordered.enumerated() {
-                item.order = index
-            }
             task.updatedAt = .now
         }
         try context.save()
@@ -72,14 +68,11 @@ public final class TaskRepository {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedTitle.isEmpty else { throw TaskRepositoryError.emptySubtaskTitle }
 
-        let subtask = Subtask(title: trimmedTitle, order: item.subtasks.count)
-        let ordered = SubtaskOrder.incompleteFirst(item.subtasks + [subtask], isCompleted: \.isCompleted)
-        for (index, value) in ordered.enumerated() {
-            value.order = index
-        }
+        let ordered = item.subtasks.sorted { $0.order < $1.order }
+        let subtask = Subtask(title: trimmedTitle, order: ordered.count)
 
         subtask.task = item
-        item.subtasks = ordered
+        item.subtasks = ordered + [subtask]
         item.updatedAt = .now
         context.insert(subtask)
         try context.save()
@@ -212,32 +205,23 @@ public final class TaskRepository {
             return
         }
 
-        let allOrdered = task.subtasks.sorted { $0.order < $1.order }
-        let movingGroup = allOrdered.filter { $0.isCompleted == subtask.isCompleted }
-        guard let sourceIndex = movingGroup.firstIndex(where: { $0.id == subtask.id }),
-              let destinationIndex = movingGroup.firstIndex(where: { $0.id == other.id }) else {
+        var reordered = task.subtasks.sorted { $0.order < $1.order }
+        guard let sourceIndex = reordered.firstIndex(where: { $0.id == subtask.id }),
+              let destinationIndex = reordered.firstIndex(where: { $0.id == other.id }) else {
             return
         }
 
-        var reorderedGroup = movingGroup
-        reorderedGroup.remove(at: sourceIndex)
+        reordered.remove(at: sourceIndex)
         let adjustedDestinationIndex = destinationIndex - (sourceIndex < destinationIndex ? 1 : 0)
         let insertionIndex = min(
             max(adjustedDestinationIndex + insertionOffset, 0),
-            reorderedGroup.count
+            reordered.count
         )
-        reorderedGroup.insert(subtask, at: insertionIndex)
-
-        let ordered: [Subtask]
-        if subtask.isCompleted {
-            ordered = allOrdered.filter { !$0.isCompleted } + reorderedGroup
-        } else {
-            ordered = reorderedGroup + allOrdered.filter(\.isCompleted)
-        }
-        for (index, value) in ordered.enumerated() {
+        reordered.insert(subtask, at: insertionIndex)
+        for (index, value) in reordered.enumerated() {
             value.order = index
         }
-        task.subtasks = ordered
+        task.subtasks = reordered
         task.updatedAt = .now
         try context.save()
     }

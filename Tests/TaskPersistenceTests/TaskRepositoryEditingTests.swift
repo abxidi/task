@@ -19,8 +19,8 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(item.details, "Context")
         XCTAssertEqual(item.urgency, 3)
         XCTAssertEqual(item.importance, 3)
-        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["Channels", "Price"])
-        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted), [false, true])
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["Price", "Channels"])
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted), [true, false])
     }
 
     func testUpdatingSubtaskKeepsItsExistingAttachment() throws {
@@ -59,7 +59,7 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(item.subtasks.first?.title, "已修改内容")
     }
 
-    func testMovingAnIncompleteSubtaskPersistsItsNewOrderBeforeCompletedItems() throws {
+    func testMovingAnIncompleteSubtaskPersistsItsNewManualOrder() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)
         let item = try repository.saveNewTask(
@@ -79,6 +79,26 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.isCompleted), [false, false, false, true])
     }
 
+    func testMovingAnIncompleteSubtaskPreservesAnInterleavedCompletedItem() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let repository = TaskRepository(context: container.mainContext)
+        let item = try repository.saveNewTask(
+            TaskDraft(
+                title: "正在做",
+                subtasks: ["第一项", "已完成", "第二项", "第三项"],
+                subtaskCompletion: [false, true, false, false]
+            )
+        )
+        let second = try XCTUnwrap(item.subtasks.first { $0.title == "第二项" })
+        let third = try XCTUnwrap(item.subtasks.first { $0.title == "第三项" })
+
+        try repository.moveSubtask(second, after: third)
+
+        let ordered = item.subtasks.sorted { $0.order < $1.order }
+        XCTAssertEqual(ordered.map(\.title), ["第一项", "已完成", "第三项", "第二项"])
+        XCTAssertEqual(ordered.map(\.isCompleted), [false, true, false, false])
+    }
+
     func testMovingAnEarlierSubtaskBeforeALaterSubtaskKeepsTheTargetPosition() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)
@@ -91,7 +111,7 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["第二项", "第一项", "第三项"])
     }
 
-    func testSettingSubtaskCompletedMovesItAfterIncompleteSubtasks() throws {
+    func testSettingSubtaskCompletedPreservesItsManualOrder() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)
         let item = try repository.saveNewTask(TaskDraft(title: "正在做", subtasks: ["先做", "后做"]))
@@ -100,11 +120,11 @@ final class TaskRepositoryEditingTests: XCTestCase {
         try repository.setSubtaskCompleted(first, isCompleted: true)
 
         let ordered = item.subtasks.sorted { $0.order < $1.order }
-        XCTAssertEqual(ordered.map(\.title), ["后做", "先做"])
-        XCTAssertEqual(ordered.map(\.isCompleted), [false, true])
+        XCTAssertEqual(ordered.map(\.title), ["先做", "后做"])
+        XCTAssertEqual(ordered.map(\.isCompleted), [true, false])
     }
 
-    func testAddingSubtaskPlacesItAfterIncompleteAndBeforeCompletedSubtasks() throws {
+    func testAddingSubtaskAppendsAfterTheLastExistingItem() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)
         let item = try repository.saveNewTask(
@@ -118,7 +138,7 @@ final class TaskRepositoryEditingTests: XCTestCase {
         _ = try repository.addSubtask(to: item, title: "新增子任务")
 
         let ordered = item.subtasks.sorted { $0.order < $1.order }
-        XCTAssertEqual(ordered.map(\.title), ["未完成", "新增子任务", "已完成"])
-        XCTAssertEqual(ordered.map(\.isCompleted), [false, false, true])
+        XCTAssertEqual(ordered.map(\.title), ["未完成", "已完成", "新增子任务"])
+        XCTAssertEqual(ordered.map(\.isCompleted), [false, true, false])
     }
 }

@@ -73,42 +73,24 @@ public struct TaskDraft: Equatable, Sendable {
     public mutating func toggleSubtaskCompletion(at index: Int) {
         normalizeSubtaskOrdering()
         guard subtasks.indices.contains(index) else { return }
-
-        let title = subtasks.remove(at: index)
-        let wasCompleted = index < subtaskCompletion.count ? subtaskCompletion.remove(at: index) : false
-        let id = index < subtaskIDs.count ? subtaskIDs.remove(at: index) : UUID()
-
-        if wasCompleted {
-            subtasks.insert(title, at: 0)
-            subtaskCompletion.insert(false, at: 0)
-            subtaskIDs.insert(id, at: 0)
-        } else {
-            subtasks.append(title)
-            subtaskCompletion.append(true)
-            subtaskIDs.append(id)
-        }
+        subtaskCompletion[index].toggle()
     }
 
     public mutating func addSubtask(_ title: String) {
         normalizeSubtaskOrdering()
-        let insertionIndex = subtaskCompletion.firstIndex(of: true) ?? subtasks.endIndex
-        subtasks.insert(title, at: insertionIndex)
-        subtaskCompletion.insert(false, at: insertionIndex)
-        subtaskIDs.insert(UUID(), at: insertionIndex)
+        subtasks.append(title)
+        subtaskCompletion.append(false)
+        subtaskIDs.append(UUID())
     }
 
     public mutating func normalizeSubtaskOrdering() {
-        let entries = subtasks.enumerated().map { index, title in
-            (
-                id: index < subtaskIDs.count ? subtaskIDs[index] : UUID(),
-                title: title,
-                isCompleted: index < subtaskCompletion.count ? subtaskCompletion[index] : false
+        subtaskIDs = Self.alignedSubtaskIDs(subtaskIDs, count: subtasks.count)
+        subtaskCompletion = Array(subtaskCompletion.prefix(subtasks.count))
+        if subtaskCompletion.count < subtasks.count {
+            subtaskCompletion.append(
+                contentsOf: Array(repeating: false, count: subtasks.count - subtaskCompletion.count)
             )
         }
-        let ordered = SubtaskOrder.incompleteFirst(entries) { $0.isCompleted }
-        subtaskIDs = ordered.map(\.id)
-        subtasks = ordered.map(\.title)
-        subtaskCompletion = ordered.map(\.isCompleted)
     }
 
     private static func alignedSubtaskIDs(_ ids: [UUID], count: Int) -> [UUID] {
