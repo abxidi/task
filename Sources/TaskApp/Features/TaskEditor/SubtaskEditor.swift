@@ -18,7 +18,8 @@ struct SubtaskEditor: View {
     @State private var newTitle = ""
     @State private var attachmentRevision = 0
     @State private var attachmentError: String?
-    @State private var insertionLocation: SubtaskReorderInsertionLocation?
+    @StateObject private var reorderCoordinator = SubtaskReorderCoordinator()
+    @State private var subtaskFrames: [UUID: CGRect] = [:]
     @FocusState private var isNewFocused: Bool
 
     var body: some View {
@@ -32,7 +33,6 @@ struct SubtaskEditor: View {
 
             if !ids.isEmpty {
                 Divider()
-                reorderDropZone(after: ids[ids.count - 1])
             }
 
             compactInputRow
@@ -50,6 +50,9 @@ struct SubtaskEditor: View {
         } message: {
             Text(attachmentError ?? "")
         }
+        .onPreferenceChange(SubtaskReorderFramePreferenceKey.self) { subtaskFrames = $0 }
+        .onDisappear { reorderCoordinator.cancel() }
+        .animation(.easeOut(duration: SubtaskReorderPresentation.reorderDuration), value: ids)
     }
 
     private func subtaskRow(index: Int, id: UUID) -> some View {
@@ -79,7 +82,11 @@ struct SubtaskEditor: View {
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(TaskDesignTokens.quiet)
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+                    .gesture(reorderGesture(for: id))
                     .help("拖动排序")
+                    .accessibilityLabel("拖动排序")
 
                 Button {
                     onDelete(index)
@@ -102,40 +109,25 @@ struct SubtaskEditor: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(minHeight: TaskEditorSubtaskEntryStyle.minimumHeight)
-        .onDrag {
-            NSItemProvider(object: id.uuidString as NSString)
-        }
-        .dropDestination(for: String.self) { values, _ in
-            moveSubtask(from: values, before: id)
-        } isTargeted: { isTargeted in
-            updateInsertionLocation(
-                isTargeted,
-                for: .before(id)
-            )
+        .opacity(reorderCoordinator.sourceID == id ? SubtaskReorderPresentation.sourceOpacity : 1)
+        .background {
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: SubtaskReorderFramePreferenceKey.self,
+                    value: [id: proxy.frame(in: .global)]
+                )
+            }
         }
         .overlay(alignment: .top) {
-            if insertionLocation == .before(id) {
+            if reorderCoordinator.insertionLocation == .before(id) {
                 SubtaskReorderInsertionIndicator()
             }
         }
-    }
-
-    private func reorderDropZone(after id: UUID) -> some View {
-        Color.clear
-            .frame(height: 8)
-            .dropDestination(for: String.self) { values, _ in
-                moveSubtask(from: values, after: id)
-            } isTargeted: { isTargeted in
-                updateInsertionLocation(
-                    isTargeted,
-                    for: .after(id)
-                )
+        .overlay(alignment: .bottom) {
+            if reorderCoordinator.insertionLocation == .after(id) {
+                SubtaskReorderInsertionIndicator()
             }
-            .overlay {
-                if insertionLocation == .after(id) {
-                    SubtaskReorderInsertionIndicator()
-                }
-            }
+        }
     }
 
     private func attachmentThumbnails(_ values: [SubtaskAttachment]) -> some View {
@@ -181,41 +173,45 @@ struct SubtaskEditor: View {
         )
     }
 
-    private func updateInsertionLocation(
-        _ isTargeted: Bool,
-        for location: SubtaskReorderInsertionLocation
-    ) {
-        if isTargeted {
-            insertionLocation = location
-        } else if insertionLocation == location {
-            insertionLocation = nil
-        }
+    private func reorderGesture(for id: UUID) -> some Gesture {
+        DragGesture(minimumDistance: SubtaskReorderPresentation.dragMinimumDistance, coordinateSpace: .global)
+            .onChanged { value in
+                if reorderCoordinator.sourceID != id {
+                    reorderCoordinator.begin(sourceID: id)
+                }
+                reorderCoordinator.update(
+                    location: value.location,
+                    orderedIDs: ids,
+                    frames: subtaskFrames
+                )
+            }
+            .onEnded { value in
+                reorderCoordinator.update(
+                    location: value.location,
+                    orderedIDs: ids,
+                    frames: subtaskFrames
+                )
+                guard let move = reorderCoordinator.complete() else { return }
+                apply(move)
+            }
     }
 
-    private func moveSubtask(from values: [String], before id: UUID) -> Bool {
-        defer { insertionLocation = nil }
-        guard let value = values.first,
-              let sourceID = UUID(uuidString: value),
-              let sourceIndex = ids.firstIndex(of: sourceID),
-              let destinationIndex = ids.firstIndex(of: id),
-              sourceID != id else {
-            return false
+    private func apply(_ move: SubtaskReorderMove) {
+        guard let sourceIndex = ids.firstIndex(of: move.sourceID) else { return }
+        let destinationID: UUID
+        let destinationOffset: Int
+        switch move.insertionLocation {
+        case .before(let id):
+            destinationID = id
+            destinationOffset = 0
+        case .after(let id):
+            destinationID = id
+            destinationOffset = 1
         }
-        onMove(IndexSet(integer: sourceIndex), destinationIndex)
-        return true
-    }
-
-    private func moveSubtask(from values: [String], after id: UUID) -> Bool {
-        defer { insertionLocation = nil }
-        guard let value = values.first,
-              let sourceID = UUID(uuidString: value),
-              let sourceIndex = ids.firstIndex(of: sourceID),
-              let destinationIndex = ids.firstIndex(of: id),
-              sourceID != id else {
-            return false
+        guard let destinationIndex = ids.firstIndex(of: destinationID), move.sourceID != destinationID else {
+            return
         }
-        onMove(IndexSet(integer: sourceIndex), destinationIndex + 1)
-        return true
+        onMove(IndexSet(integer: sourceIndex), destinationIndex + destinationOffset)
     }
 
     private var compactInputRow: some View {

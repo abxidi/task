@@ -294,7 +294,8 @@ private struct FocusEntryRow: View {
     @State private var state: TaskFocusState
     @State private var note: String
     @State private var newSubtaskTitle = ""
-    @State private var insertionLocation: SubtaskReorderInsertionLocation?
+    @StateObject private var reorderCoordinator = SubtaskReorderCoordinator()
+    @State private var subtaskFrames: [UUID: CGRect] = [:]
     @State private var errorMessage: String?
 
     init(entry: FocusEntry, onRemove: @escaping () -> Void) {
@@ -327,6 +328,8 @@ private struct FocusEntryRow: View {
         } message: {
             Text(errorMessage ?? "")
         }
+        .onPreferenceChange(SubtaskReorderFramePreferenceKey.self) { subtaskFrames = $0 }
+        .onDisappear { reorderCoordinator.cancel() }
     }
 
     private var leftColumn: some View {
@@ -429,27 +432,32 @@ private struct FocusEntryRow: View {
                         Image(systemName: "line.3.horizontal")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(TaskDesignTokens.quiet)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                            .gesture(reorderGesture(for: subtask.id))
                             .help("拖动排序")
                             .accessibilityLabel("拖动排序")
                     }
-                    .onDrag {
-                        NSItemProvider(object: subtask.id.uuidString as NSString)
-                    }
-                    .dropDestination(for: String.self) { values, _ in
-                        moveSubtask(from: values, before: subtask.id)
-                    } isTargeted: { isTargeted in
-                        updateInsertionLocation(
-                            isTargeted,
-                            for: .before(subtask.id)
-                        )
+                    .opacity(reorderCoordinator.sourceID == subtask.id ? SubtaskReorderPresentation.sourceOpacity : 1)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: SubtaskReorderFramePreferenceKey.self,
+                                value: [subtask.id: proxy.frame(in: .global)]
+                            )
+                        }
                     }
                     .overlay(alignment: .top) {
-                        if insertionLocation == .before(subtask.id) {
+                        if reorderCoordinator.insertionLocation == .before(subtask.id) {
+                            SubtaskReorderInsertionIndicator()
+                        }
+                    }
+                    .overlay(alignment: .bottom) {
+                        if reorderCoordinator.insertionLocation == .after(subtask.id) {
                             SubtaskReorderInsertionIndicator()
                         }
                     }
                 }
-                reorderDropZone(after: incompleteSubtasks[incompleteSubtasks.count - 1].id)
             }
 
             if entry.task != nil {
@@ -457,6 +465,7 @@ private struct FocusEntryRow: View {
             }
         }
         .frame(minWidth: FocusPoolPresentation.subtaskColumnMinWidth, maxWidth: .infinity, alignment: .leading)
+        .animation(.easeOut(duration: SubtaskReorderPresentation.reorderDuration), value: incompleteSubtasks)
     }
 
     private var addSubtaskInput: some View {
@@ -526,68 +535,58 @@ private struct FocusEntryRow: View {
         }
     }
 
-    private func reorderDropZone(after id: UUID) -> some View {
-        Color.clear
-            .frame(height: 8)
-            .dropDestination(for: String.self) { values, _ in
-                moveSubtask(from: values, after: id)
-            } isTargeted: { isTargeted in
-                updateInsertionLocation(
-                    isTargeted,
-                    for: .after(id)
+    private func reorderGesture(for id: UUID) -> some Gesture {
+        DragGesture(minimumDistance: SubtaskReorderPresentation.dragMinimumDistance, coordinateSpace: .global)
+            .onChanged { value in
+                if reorderCoordinator.sourceID != id {
+                    reorderCoordinator.begin(sourceID: id)
+                }
+                reorderCoordinator.update(
+                    location: value.location,
+                    orderedIDs: incompleteSubtasks.map(\.id),
+                    frames: subtaskFrames
                 )
             }
-            .overlay {
-                if insertionLocation == .after(id) {
-                    SubtaskReorderInsertionIndicator()
-                }
+            .onEnded { value in
+                reorderCoordinator.update(
+                    location: value.location,
+                    orderedIDs: incompleteSubtasks.map(\.id),
+                    frames: subtaskFrames
+                )
+                guard let move = reorderCoordinator.complete() else { return }
+                apply(move)
             }
     }
 
-    private func updateInsertionLocation(
-        _ isTargeted: Bool,
-        for location: SubtaskReorderInsertionLocation
-    ) {
-        if isTargeted {
-            insertionLocation = location
-        } else if insertionLocation == location {
-            insertionLocation = nil
+    private func apply(_ move: SubtaskReorderMove) {
+        guard let task = entry.task,
+              let source = task.subtasks.first(where: { $0.id == move.sourceID }) else {
+            return
         }
-    }
-
-    private func moveSubtask(from values: [String], before id: UUID) -> Bool {
-        defer { insertionLocation = nil }
-        guard let sourceID = values.first.flatMap(UUID.init(uuidString:)),
-              let source = entry.task?.subtasks.first(where: { $0.id == sourceID }),
-              let destination = entry.task?.subtasks.first(where: { $0.id == id }),
+        let destinationID: UUID
+        let isAfter: Bool
+        switch move.insertionLocation {
+        case .before(let id):
+            destinationID = id
+            isAfter = false
+        case .after(let id):
+            destinationID = id
+            isAfter = true
+        }
+        guard let destination = task.subtasks.first(where: { $0.id == destinationID }),
               source.id != destination.id else {
-            return false
+            return
         }
 
         do {
-            try TaskRepository(context: modelContext).moveSubtask(source, before: destination)
-            return true
+            let repository = TaskRepository(context: modelContext)
+            if isAfter {
+                try repository.moveSubtask(source, after: destination)
+            } else {
+                try repository.moveSubtask(source, before: destination)
+            }
         } catch {
             errorMessage = error.localizedDescription
-            return false
-        }
-    }
-
-    private func moveSubtask(from values: [String], after id: UUID) -> Bool {
-        defer { insertionLocation = nil }
-        guard let sourceID = values.first.flatMap(UUID.init(uuidString:)),
-              let source = entry.task?.subtasks.first(where: { $0.id == sourceID }),
-              let destination = entry.task?.subtasks.first(where: { $0.id == id }),
-              source.id != destination.id else {
-            return false
-        }
-
-        do {
-            try TaskRepository(context: modelContext).moveSubtask(source, after: destination)
-            return true
-        } catch {
-            errorMessage = error.localizedDescription
-            return false
         }
     }
 
