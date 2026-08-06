@@ -65,6 +65,12 @@ enum FocusPoolPresentation {
     static let statusControlWidth: CGFloat = 270
     static let statusSegmentWidth: CGFloat = 90
     static let statusControlFontSize: CGFloat = 11
+    static let statusSegmentHeight: CGFloat = 48
+    static let selectedStatusMarkerSize: CGFloat = 10
+    static let unselectedStatusMarkerSize: CGFloat = 8
+    static let statusControlUsesNeutralSurface = true
+    static let statusControlSeparatesMarkerAndTitle = true
+    static let statusControlUsesFilledStateBackground = false
     static let noteUsesPlainField = true
     static let noteUsesMultilineEditor = true
     static let statusControlUsesLeadingAlignment = true
@@ -138,12 +144,6 @@ private struct FocusStateSegmentedControl: View {
             }
         }
         .frame(width: FocusPoolPresentation.statusControlWidth, alignment: .leading)
-        .background(TaskDesignTokens.sidebar, in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
-                .stroke(TaskDesignTokens.line, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius))
     }
 
     private func segment(for option: TaskFocusState) -> some View {
@@ -161,16 +161,58 @@ private struct FocusStateSegmentedControl: View {
     }
 
     private func segmentLabel(title: String, state: TaskFocusState, isSelected: Bool) -> some View {
-        Text(title)
-            .font(.system(size: FocusPoolPresentation.statusControlFontSize, weight: .semibold))
-            .foregroundStyle(
-                isSelected && !FocusStatePresentation.usesDarkSelectionText(for: state)
-                    ? Color.white
-                    : TaskDesignTokens.ink
-            )
-            .frame(width: FocusPoolPresentation.statusSegmentWidth, height: 30)
-            .background(isSelected ? FocusStatePresentation.selectionColor(for: state) : Color.clear)
+        VStack(spacing: 5) {
+            statusMarker(for: state, isSelected: isSelected)
+            Text(title)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(isSelected ? TaskDesignTokens.ink : TaskDesignTokens.muted)
+        }
+        .frame(
+            width: FocusPoolPresentation.statusSegmentWidth,
+            height: FocusPoolPresentation.statusSegmentHeight
+        )
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
+                    .fill(TaskDesignTokens.raised)
+                    .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
+            }
+        }
+        .overlay {
+            if isSelected {
+                RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
+                    .stroke(FocusStatePresentation.selectionColor(for: state).opacity(0.32), lineWidth: 1)
+            }
+        }
             .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func statusMarker(for state: TaskFocusState, isSelected: Bool) -> some View {
+        let color = FocusStatePresentation.selectionColor(for: state)
+        if isSelected {
+            Circle()
+                .stroke(color, lineWidth: 2)
+                .frame(
+                    width: FocusPoolPresentation.selectedStatusMarkerSize,
+                    height: FocusPoolPresentation.selectedStatusMarkerSize
+                )
+                .background {
+                    Circle()
+                        .fill(color.opacity(0.14))
+                        .frame(
+                            width: FocusPoolPresentation.selectedStatusMarkerSize + 6,
+                            height: FocusPoolPresentation.selectedStatusMarkerSize + 6
+                        )
+                }
+        } else {
+            Circle()
+                .fill(color)
+                .frame(
+                    width: FocusPoolPresentation.unselectedStatusMarkerSize,
+                    height: FocusPoolPresentation.unselectedStatusMarkerSize
+                )
+        }
     }
 }
 

@@ -68,6 +68,17 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(FocusPoolPresentation.showsStatusSymbol)
     }
 
+    func testFocusStatusControlUsesNeutralInsetCellsWithSeparateMarkers() {
+        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 270)
+        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 90)
+        XCTAssertEqual(FocusPoolPresentation.statusSegmentHeight, 48)
+        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerSize, 10)
+        XCTAssertEqual(FocusPoolPresentation.unselectedStatusMarkerSize, 8)
+        XCTAssertTrue(FocusPoolPresentation.statusControlUsesNeutralSurface)
+        XCTAssertTrue(FocusPoolPresentation.statusControlSeparatesMarkerAndTitle)
+        XCTAssertFalse(FocusPoolPresentation.statusControlUsesFilledStateBackground)
+    }
+
     func testFocusCardsUseTwoColumnsAndPlainNoteField() {
         XCTAssertTrue(FocusPoolPresentation.usesTwoColumnCard)
         XCTAssertEqual(FocusPoolPresentation.subtaskColumnMinWidth, 280)
