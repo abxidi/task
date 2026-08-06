@@ -48,7 +48,7 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(FocusPoolPresentation.canAddTask(isCompleted: false, hasFocusEntry: true))
     }
 
-    func testFocusPoolKeepsCompletedSubtasksInTheirOriginalOrder() {
+    func testFocusPoolHidesCompletedSubtasksWithoutReorderingTheRemainingItems() {
         let values = [
             FocusSubtaskItem(id: UUID(), title: "已完成", isCompleted: true),
             FocusSubtaskItem(id: UUID(), title: "先做", isCompleted: false),
@@ -57,7 +57,7 @@ final class FocusPoolPresentationTests: XCTestCase {
 
         XCTAssertEqual(
             FocusPoolPresentation.subtasks(from: values).map(\.title),
-            ["已完成", "先做", "后做"]
+            ["先做", "后做"]
         )
     }
 

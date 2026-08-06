@@ -80,7 +80,7 @@ enum FocusPoolPresentation {
     }
 
     static func subtasks(from subtasks: [FocusSubtaskItem]) -> [FocusSubtaskItem] {
-        subtasks
+        subtasks.filter { !$0.isCompleted }
     }
 
     static func allowsSubtaskCompletion(from source: FocusSubtaskCompletionSource) -> Bool {
@@ -411,10 +411,10 @@ private struct FocusEntryRow: View {
     private var subtasksColumn: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Text("子任务")
+                Text("未完成子任务")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(TaskDesignTokens.quiet)
-                Text("\(incompleteSubtaskCount) / \(subtasks.count)")
+                Text("\(subtasks.count)")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(TaskDesignTokens.quiet)
                 Spacer(minLength: 0)
@@ -530,10 +530,6 @@ private struct FocusEntryRow: View {
                 FocusSubtaskItem(id: $0.id, title: $0.title, isCompleted: $0.isCompleted)
             } ?? []
         )
-    }
-
-    private var incompleteSubtaskCount: Int {
-        subtasks.lazy.filter { !$0.isCompleted }.count
     }
 
     private func toggleSubtaskCompletion(_ id: UUID, from source: FocusSubtaskCompletionSource) {
