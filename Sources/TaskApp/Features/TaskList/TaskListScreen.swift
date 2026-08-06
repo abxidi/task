@@ -5,7 +5,7 @@ import TaskPersistence
 
 enum TaskListScope: String, CaseIterable, Identifiable {
     case today
-    case nextSevenDays
+    case thisWeek
     case all
     case completed
 
@@ -14,7 +14,7 @@ enum TaskListScope: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .today: "今天"
-        case .nextSevenDays: "未来 7 天"
+        case .thisWeek: "本周"
         case .all: "全部任务"
         case .completed: "已完成"
         }
@@ -47,6 +47,8 @@ struct TaskListScreen: View {
     @State private var settlementToken: UUID?
     @State private var errorMessage: String?
     @State private var taskPendingDeletion: TaskItem?
+    @State private var completedSearchText = ""
+    @State private var completedSort: CompletedTaskSort = .completionTime
 
     var body: some View {
         GeometryReader { geometry in
@@ -96,7 +98,7 @@ struct TaskListScreen: View {
     private var taskListContent: some View {
         VStack(spacing: 0) {
             PageHeader(
-                eyebrow: "任务列表 · (scope.title)",
+                eyebrow: "任务列表 · \(scope.title)",
                 title: "任务列表",
                 primaryActionTitle: "新任务",
                 primaryAction: {
@@ -111,7 +113,16 @@ struct TaskListScreen: View {
 
             scopePicker
 
-            if lanes.isEmpty {
+            if scope == .completed {
+                CompletedTaskGrid(
+                    tasks: completedTasks,
+                    searchText: $completedSearchText,
+                    sort: $completedSort,
+                    onOpenTask: { taskEditorCoordinator.present(.edit($0)) },
+                    onToggleTask: toggle,
+                    onDeleteTask: { taskPendingDeletion = $0 }
+                )
+            } else if lanes.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
@@ -204,16 +215,27 @@ struct TaskListScreen: View {
     private var filteredTasks: [TaskItem] {
         let calendar = Calendar.current
         let now = Date.now
-        let startOfToday = calendar.startOfDay(for: now)
-        let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? now
-        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfToday) ?? now
 
         let filtered: [TaskItem]
         switch scope {
         case .today:
-            filtered = allTasks.filter { !$0.isCompleted && ($0.dueAt.map { $0 >= startOfToday && $0 < endOfToday } ?? false) }
-        case .nextSevenDays:
-            filtered = allTasks.filter { !$0.isCompleted && ($0.dueAt.map { $0 >= startOfToday && $0 < endOfWeek } ?? false) }
+            filtered = allTasks.filter {
+                !$0.isCompleted && TaskListDateFilter.matches(
+                    dueAt: $0.dueAt,
+                    in: .today,
+                    now: now,
+                    calendar: calendar
+                )
+            }
+        case .thisWeek:
+            filtered = allTasks.filter {
+                !$0.isCompleted && TaskListDateFilter.matches(
+                    dueAt: $0.dueAt,
+                    in: .thisWeek,
+                    now: now,
+                    calendar: calendar
+                )
+            }
         case .all:
             filtered = allTasks.filter { $0.project == nil }
         case .completed:
@@ -221,6 +243,15 @@ struct TaskListScreen: View {
         }
 
         return filtered.sorted(by: sortsByPriority)
+    }
+
+    private var completedTasks: [TaskItem] {
+        allTasks
+            .filter { $0.isCompleted && $0.project == nil }
+            .filter { CompletedTaskPresentation.matches($0, query: completedSearchText) }
+            .sorted(by: completedSort == .completionTime
+                ? CompletedTaskPresentation.sortsByCompletionTime
+                : CompletedTaskPresentation.sortsByCreationTime)
     }
 
     private func tasks(in lane: BoardColumn) -> [TaskItem] {
