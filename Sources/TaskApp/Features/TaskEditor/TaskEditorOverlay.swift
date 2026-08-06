@@ -67,8 +67,15 @@ enum TaskEditorOverlayLayout {
     static let edgeInset: CGFloat = 28
     static let supportsEscapeToClose = true
 
-    static func panelSize(for availableSize: CGSize, subtaskCount: Int) -> CGSize {
-        let desiredHeight = initialHeight + CGFloat(max(0, subtaskCount)) * subtaskHeightIncrement
+    static func panelSize(
+        for availableSize: CGSize,
+        subtaskCount: Int,
+        noteHeight: CGFloat = TaskEditorNoteLayout.minimumHeight
+    ) -> CGSize {
+        let noteHeightDelta = max(0, noteHeight - TaskEditorNoteLayout.minimumHeight)
+        let desiredHeight = initialHeight
+            + noteHeightDelta
+            + CGFloat(max(0, subtaskCount)) * subtaskHeightIncrement
         return CGSize(
             width: min(preferredWidth, max(minimumWidth, availableSize.width - edgeInset * 2)),
             height: min(desiredHeight, availableSize.height * maximumHeightRatio)

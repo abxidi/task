@@ -83,6 +83,22 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         )
     }
 
+    func testEditorHeightIncludesAdditionalVisibleNoteLines() {
+        let compact = TaskEditorOverlayLayout.panelSize(
+            for: CGSize(width: 1900, height: 1000),
+            subtaskCount: 0,
+            noteHeight: TaskEditorNoteLayout.minimumHeight
+        )
+        let fiveLines = TaskEditorOverlayLayout.panelSize(
+            for: CGSize(width: 1900, height: 1000),
+            subtaskCount: 0,
+            noteHeight: TaskEditorNoteLayout.maximumHeight
+        )
+
+        XCTAssertEqual(compact.height, 360)
+        XCTAssertEqual(fiveLines.height, 440)
+    }
+
     func testTaskEditorSupportsEscapeToClose() {
         XCTAssertTrue(TaskEditorOverlayLayout.supportsEscapeToClose)
         XCTAssertTrue(TaskEditorLayout.supportsEscapeToClose)
