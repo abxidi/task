@@ -56,6 +56,13 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertLessThan(TaskEditorPlaceholder.opacity, 1)
     }
 
+    func testQuickEditorUsesAnAdaptiveNoteInsteadOfFocusDrivenExpansion() {
+        XCTAssertTrue(TaskEditorLayout.usesAdaptiveNoteHeight)
+        XCTAssertEqual(TaskEditorLayout.noteMinimumHeight, 32)
+        XCTAssertEqual(TaskEditorLayout.noteMaximumHeight, 112)
+        XCTAssertFalse(TaskEditorLayout.expandsNoteOnlyForFocus)
+    }
+
     func testTaskEditorUsesOnePanelSizeAcrossPresentationEntrypoints() {
         let fullWindow = TaskEditorOverlayLayout.panelSize(
             for: CGSize(width: 1900, height: 1100),

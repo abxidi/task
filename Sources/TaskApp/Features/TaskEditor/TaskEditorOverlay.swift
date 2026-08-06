@@ -18,18 +18,21 @@ struct TaskEditorOverlay: View {
     let onClose: () -> Void
     @State private var outsideDismissToken: UUID?
     @State private var subtaskCount: Int
+    @State private var noteHeight: CGFloat
 
     init(mode: TaskEditorMode, onClose: @escaping () -> Void) {
         self.mode = mode
         self.onClose = onClose
         _subtaskCount = State(initialValue: mode.initialSubtaskCount)
+        _noteHeight = State(initialValue: TaskEditorNoteLayout.minimumHeight)
     }
 
     var body: some View {
         GeometryReader { proxy in
             let panelSize = TaskEditorOverlayLayout.panelSize(
                 for: proxy.size,
-                subtaskCount: subtaskCount
+                subtaskCount: subtaskCount,
+                noteHeight: noteHeight
             )
 
             ZStack {
@@ -44,7 +47,11 @@ struct TaskEditorOverlay: View {
                     mode: mode,
                     onClose: onClose,
                     outsideDismissToken: outsideDismissToken,
-                    onSubtaskCountChange: { subtaskCount = $0 }
+                    onSubtaskCountChange: { subtaskCount = $0 },
+                    onNoteHeightChange: { height in
+                        guard noteHeight != height else { return }
+                        noteHeight = height
+                    }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .frame(width: panelSize.width, height: panelSize.height)

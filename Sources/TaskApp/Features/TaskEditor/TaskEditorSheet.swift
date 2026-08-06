@@ -9,7 +9,8 @@ struct TaskEditorSheet: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var model: TaskEditorModel
     @FocusState private var titleFocused: Bool
-    @FocusState private var descriptionFocused: Bool
+    @State private var descriptionFocused = false
+    @State private var noteHeight = TaskEditorNoteLayout.minimumHeight
     @State private var reminderWarning: String?
     @State private var isPriorityPickerPresented = false
     @State private var autoSaveTask: Swift.Task<Void, Never>?
@@ -18,16 +19,19 @@ struct TaskEditorSheet: View {
     private let onClose: (() -> Void)?
     private let outsideDismissToken: UUID?
     private let onSubtaskCountChange: (Int) -> Void
+    private let onNoteHeightChange: (CGFloat) -> Void
 
     init(
         mode: TaskEditorMode,
         onClose: (() -> Void)? = nil,
         outsideDismissToken: UUID? = nil,
-        onSubtaskCountChange: @escaping (Int) -> Void = { _ in }
+        onSubtaskCountChange: @escaping (Int) -> Void = { _ in },
+        onNoteHeightChange: @escaping (CGFloat) -> Void = { _ in }
     ) {
         self.onClose = onClose
         self.outsideDismissToken = outsideDismissToken
         self.onSubtaskCountChange = onSubtaskCountChange
+        self.onNoteHeightChange = onNoteHeightChange
         let editorModel: TaskEditorModel
         switch mode {
         case .create:
@@ -89,25 +93,24 @@ struct TaskEditorSheet: View {
 
                     ZStack(alignment: .topLeading) {
                         if TaskEditorPlaceholder.isVisible(text: model.draft.details, isFocused: descriptionFocused) {
-                            Text("添加备注...")
-                                .font(.system(size: 15))
-                                .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
-                                .padding(.horizontal, 5)
-                                .padding(.vertical, 13)
-                                .allowsHitTesting(false)
+                                Text("添加备注...")
+                                    .font(.system(size: 15))
+                                    .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 7)
+                                    .allowsHitTesting(false)
+                            }
+                        AdaptiveNoteTextEditor(
+                            text: $model.draft.details,
+                            isFocused: $descriptionFocused
+                        ) { measuredHeight in
+                            guard noteHeight != measuredHeight else { return }
+                            noteHeight = measuredHeight
+                            onNoteHeightChange(measuredHeight)
                         }
-                        TextEditor(text: $model.draft.details)
-                            .font(.system(size: 15))
-                            .foregroundStyle(TaskDesignTokens.muted)
-                            .scrollContentBackground(.hidden)
-                            .taskSubtleScrollIndicators()
-                            .focused($descriptionFocused)
-                            .padding(.vertical, 8)
                     }
-                    .frame(height: isDescriptionExpanded ? 142 : 48)
+                    .frame(height: noteHeight)
                     .padding(.top, 14)
-                    .contentShape(Rectangle())
-                    .onTapGesture { openMarkdown() }
 
                     subtaskEditor
                         .padding(.top, 20)
@@ -165,10 +168,6 @@ struct TaskEditorSheet: View {
                 )
             }
         }
-    }
-
-    private var isDescriptionExpanded: Bool {
-        descriptionFocused || !model.draft.details.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var subtaskEditor: some View {
@@ -351,6 +350,10 @@ enum TaskEditorLayout {
     static let supportsEscapeToClose = true
     static let titleContentWidth: CGFloat = 460
     static let emptySubtaskHeight: CGFloat = 40
+    static let usesAdaptiveNoteHeight = true
+    static let expandsNoteOnlyForFocus = false
+    static let noteMinimumHeight = TaskEditorNoteLayout.minimumHeight
+    static let noteMaximumHeight = TaskEditorNoteLayout.maximumHeight
 }
 
 enum TaskEditorPriorityLabel {
