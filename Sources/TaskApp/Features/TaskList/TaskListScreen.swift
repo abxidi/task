@@ -4,8 +4,7 @@ import TaskDomain
 import TaskPersistence
 
 enum TaskListScope: String, CaseIterable, Identifiable {
-    case today
-    case nextSevenDays
+    case focus
     case all
     case completed
 
@@ -13,8 +12,7 @@ enum TaskListScope: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .today: "今天"
-        case .nextSevenDays: "未来 7 天"
+        case .focus: "正在做"
         case .all: "全部任务"
         case .completed: "已完成"
         }
@@ -31,6 +29,7 @@ enum TaskListScope: String, CaseIterable, Identifiable {
 
 struct TaskListScreen: View {
     var initialScope: TaskListScope? = nil
+    var onShowFocus: () -> Void = {}
     var onCreateTask: () -> Void = {}
 
     @Environment(\.modelContext) private var modelContext
@@ -47,6 +46,8 @@ struct TaskListScreen: View {
     @State private var settlementToken: UUID?
     @State private var errorMessage: String?
     @State private var taskPendingDeletion: TaskItem?
+    @State private var completedSearchText = ""
+    @State private var completedSort: CompletedTaskSort = .completionTime
 
     var body: some View {
         GeometryReader { geometry in
@@ -96,7 +97,7 @@ struct TaskListScreen: View {
     private var taskListContent: some View {
         VStack(spacing: 0) {
             PageHeader(
-                eyebrow: "任务列表 · (scope.title)",
+                eyebrow: "任务列表 · \(scope.title)",
                 title: "任务列表",
                 primaryActionTitle: "新任务",
                 primaryAction: {
@@ -111,37 +112,7 @@ struct TaskListScreen: View {
 
             scopePicker
 
-            if lanes.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach(lanes, id: \.id) { lane in
-                            BoardColumnView(
-                                column: lane,
-                                tasks: tasks(in: lane),
-                                onAddTask: { taskEditorCoordinator.present(.createInColumn(lane.id)) },
-                                onRename: {
-                                    renameText = lane.name
-                                    renamingColumn = lane
-                                },
-                                onArchive: {},
-                                onDragChanged: { updateDrag(at: $0) },
-                                onDragEnded: { finishDrag(at: $0) },
-                                onOpenTask: { taskEditorCoordinator.present(.edit($0)) },
-                                onToggleTask: toggle,
-                                onDelete: scope.allowsTaskDeletion(in: lane) ? { taskPendingDeletion = $0 } : nil,
-                                draggedTask: draggedTask,
-                                targetPlaceholderIndex: targetPlaceholderIndex(for: lane),
-                                dragCoordinator: dragCoordinator
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 26)
-                    .padding(.bottom, 24)
-                }
-            }
+            content
         }
         .background(TaskDesignTokens.canvas)
         .onAppear {
@@ -149,7 +120,12 @@ struct TaskListScreen: View {
             if let initialScope { scope = initialScope }
         }
         .onChange(of: initialScope) { _, newValue in
-            if let newValue { scope = newValue }
+            guard let newValue else { return }
+            if newValue == .focus {
+                onShowFocus()
+            } else {
+                scope = newValue
+            }
         }
     }
 
@@ -177,7 +153,11 @@ struct TaskListScreen: View {
         HStack(spacing: 2) {
             ForEach(TaskListScope.allCases) { item in
                 Button {
-                    scope = item
+                    if item == .focus {
+                        onShowFocus()
+                    } else {
+                        scope = item
+                    }
                 } label: {
                     Text(item.title)
                         .font(.system(size: 10, weight: scope == item ? .bold : .regular))
@@ -201,19 +181,55 @@ struct TaskListScreen: View {
         boardColumns.filter { $0.project == nil }.sorted { $0.order < $1.order }
     }
 
-    private var filteredTasks: [TaskItem] {
-        let calendar = Calendar.current
-        let now = Date.now
-        let startOfToday = calendar.startOfDay(for: now)
-        let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? now
-        let endOfWeek = calendar.date(byAdding: .day, value: 7, to: startOfToday) ?? now
+    @ViewBuilder
+    private var content: some View {
+        if scope == .completed {
+            CompletedTaskGrid(
+                tasks: completedTasks,
+                searchText: $completedSearchText,
+                sort: $completedSort,
+                onOpenTask: { taskEditorCoordinator.present(.edit($0)) },
+                onToggleTask: toggle,
+                onDeleteTask: { taskPendingDeletion = $0 }
+            )
+        } else if lanes.isEmpty {
+            ProgressView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) {
+                    ForEach(lanes, id: \.id) { lane in
+                        BoardColumnView(
+                            column: lane,
+                            tasks: tasks(in: lane),
+                            onAddTask: { taskEditorCoordinator.present(.createInColumn(lane.id)) },
+                            onRename: {
+                                renameText = lane.name
+                                renamingColumn = lane
+                            },
+                            onArchive: {},
+                            onDragChanged: { updateDrag(at: $0) },
+                            onDragEnded: { finishDrag(at: $0) },
+                            onOpenTask: { taskEditorCoordinator.present(.edit($0)) },
+                            onToggleTask: toggle,
+                            onDelete: scope.allowsTaskDeletion(in: lane) ? { taskPendingDeletion = $0 } : nil,
+                            draggedTask: draggedTask,
+                            targetPlaceholderIndex: targetPlaceholderIndex(for: lane),
+                            dragCoordinator: dragCoordinator
+                        )
+                    }
+                }
+                .padding(.horizontal, 26)
+                .padding(.bottom, 24)
+            }
+        }
+    }
 
+    private var filteredTasks: [TaskItem] {
         let filtered: [TaskItem]
         switch scope {
-        case .today:
-            filtered = allTasks.filter { !$0.isCompleted && ($0.dueAt.map { $0 >= startOfToday && $0 < endOfToday } ?? false) }
-        case .nextSevenDays:
-            filtered = allTasks.filter { !$0.isCompleted && ($0.dueAt.map { $0 >= startOfToday && $0 < endOfWeek } ?? false) }
+        case .focus:
+            filtered = []
         case .all:
             filtered = allTasks.filter { $0.project == nil }
         case .completed:
@@ -221,6 +237,15 @@ struct TaskListScreen: View {
         }
 
         return filtered.sorted(by: sortsByPriority)
+    }
+
+    private var completedTasks: [TaskItem] {
+        allTasks
+            .filter { $0.isCompleted && $0.project == nil }
+            .filter { CompletedTaskPresentation.matches($0, query: completedSearchText) }
+            .sorted(by: completedSort == .completionTime
+                ? CompletedTaskPresentation.sortsByCompletionTime
+                : CompletedTaskPresentation.sortsByCreationTime)
     }
 
     private func tasks(in lane: BoardColumn) -> [TaskItem] {

@@ -3,17 +3,16 @@ import XCTest
 import TaskPersistence
 
 final class TaskListScopeTests: XCTestCase {
-    func testScopesUseAllTasks() {
+    func testScopesContainOnlyFocusAllAndCompleted() {
         XCTAssertEqual(
             TaskListScope.allCases.map(\.title),
-            ["今天", "未来 7 天", "全部任务", "已完成"]
+            ["正在做", "全部任务", "已完成"]
         )
     }
 
     func testCompletedScopeAllowsTaskDeletionOnly() {
         XCTAssertTrue(TaskListScope.completed.allowsTaskDeletion)
-        XCTAssertFalse(TaskListScope.today.allowsTaskDeletion)
-        XCTAssertFalse(TaskListScope.nextSevenDays.allowsTaskDeletion)
+        XCTAssertFalse(TaskListScope.focus.allowsTaskDeletion)
         XCTAssertFalse(TaskListScope.all.allowsTaskDeletion)
     }
 

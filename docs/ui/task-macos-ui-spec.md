@@ -206,9 +206,8 @@ let importance = Int((normalizedY * 6).rounded()) - 3
 2. 任务列表。
 3. 项目看板。
 4. 数据洞察。
-5. 快捷筛选：今天、未来 7 天、全部任务。
-6. 项目列表。
-7. 本机工作区和设置。
+5. 项目列表。
+6. 本机工作区和设置。
 
 导航行高度 `34 pt`。选中行使用石墨背景和白色文字，图标使用酸橙色。使用 SF Symbols：
 
@@ -217,11 +216,10 @@ let importance = Int((normalizedY * 6).rounded()) - 3
 任务列表: checkmark.circle
 项目看板: rectangle.3.group
 数据洞察: chart.xyaxis.line
-今天: sun.max
-未来 7 天: calendar
-全部任务: checklist
 设置: gearshape
 ```
+
+任务列表内容区使用三个同级标签：“正在做”“全部任务”“已完成”。“正在做”仅迁移入口，打开后保持既有页面和交互；“全部任务”保持既有泳道布局。“已完成”不渲染泳道，使用自适应卡片网格，顶部提供搜索框以及“完成时间最新 / 创建时间最新”排序菜单。
 
 ### 5.2 页面标题区
 

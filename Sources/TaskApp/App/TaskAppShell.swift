@@ -36,7 +36,10 @@ struct TaskAppShell: View {
                         taskEditorCoordinator.present(.create)
                     }
                 case .taskList:
-                    TaskListScreen(initialScope: listScope) {
+                    TaskListScreen(initialScope: listScope, onShowFocus: {
+                        selection = .focusPool
+                        listScope = nil
+                    }) {
                         taskEditorCoordinator.present(.create)
                     }
                 case .focusPool:
