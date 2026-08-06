@@ -23,33 +23,42 @@ final class TaskDraftTests: XCTestCase {
         }
     }
 
-    func testValidatedSubtasksPreserveTheUserDefinedOrder() throws {
+    func testValidatedSubtasksPlaceIncompleteItemsBeforeCompletedItems() throws {
         let draft = TaskDraft(
             title: "Plan",
             subtasks: ["已完成一", "未完成一", "已完成二", "未完成二"],
             subtaskCompletion: [true, false, true, false]
         )
-        XCTAssertEqual(try draft.validated().subtasks, ["已完成一", "未完成一", "已完成二", "未完成二"])
-        XCTAssertEqual(try draft.validated().subtaskCompletion, [true, false, true, false])
+        XCTAssertEqual(try draft.validated().subtasks, ["未完成一", "未完成二", "已完成一", "已完成二"])
+        XCTAssertEqual(try draft.validated().subtaskCompletion, [false, false, true, true])
     }
 
-    func testTogglingSubtaskPreservesItsPosition() {
+    func testCompletingSubtaskMovesItAfterAllIncompleteSubtasks() {
+        var draft = TaskDraft(
+            title: "Plan",
+            subtasks: ["当前", "待办", "稍后"],
+            subtaskCompletion: [false, false, false]
+        )
+
+        draft.toggleSubtaskCompletion(at: 0)
+        XCTAssertEqual(draft.subtasks, ["待办", "稍后", "当前"])
+        XCTAssertEqual(draft.subtaskCompletion, [false, false, true])
+    }
+
+    func testReopeningCompletedSubtaskMovesItToTheBeginningOfIncompleteSubtasks() {
         var draft = TaskDraft(
             title: "Plan",
             subtasks: ["当前", "待办", "已完成"],
             subtaskCompletion: [false, false, true]
         )
 
-        draft.toggleSubtaskCompletion(at: 0)
-        XCTAssertEqual(draft.subtasks, ["当前", "待办", "已完成"])
-        XCTAssertEqual(draft.subtaskCompletion, [true, false, true])
+        draft.toggleSubtaskCompletion(at: 2)
 
-        draft.toggleSubtaskCompletion(at: 1)
-        XCTAssertEqual(draft.subtasks, ["当前", "待办", "已完成"])
-        XCTAssertEqual(draft.subtaskCompletion, [true, true, true])
+        XCTAssertEqual(draft.subtasks, ["已完成", "当前", "待办"])
+        XCTAssertEqual(draft.subtaskCompletion, [false, false, false])
     }
 
-    func testAddingSubtaskAppendsAfterTheLastExistingItem() {
+    func testAddingSubtaskPlacesItBeforeCompletedItems() {
         var draft = TaskDraft(
             title: "Plan",
             subtasks: ["待办", "已完成"],
@@ -58,8 +67,8 @@ final class TaskDraftTests: XCTestCase {
 
         draft.addSubtask("新增")
 
-        XCTAssertEqual(draft.subtasks, ["待办", "已完成", "新增"])
-        XCTAssertEqual(draft.subtaskCompletion, [false, true, false])
+        XCTAssertEqual(draft.subtasks, ["待办", "新增", "已完成"])
+        XCTAssertEqual(draft.subtaskCompletion, [false, false, true])
     }
 
     func testSubtaskIdentityMovesWithTheSubtask() {
@@ -74,7 +83,7 @@ final class TaskDraftTests: XCTestCase {
 
         draft.toggleSubtaskCompletion(at: 0)
 
-        XCTAssertEqual(draft.subtasks, ["第一项", "第二项"])
-        XCTAssertEqual(draft.subtaskIDs, [firstID, secondID])
+        XCTAssertEqual(draft.subtasks, ["第二项", "第一项"])
+        XCTAssertEqual(draft.subtaskIDs, [secondID, firstID])
     }
 }

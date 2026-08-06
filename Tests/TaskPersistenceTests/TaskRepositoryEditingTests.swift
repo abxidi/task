@@ -19,8 +19,8 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(item.details, "Context")
         XCTAssertEqual(item.urgency, 3)
         XCTAssertEqual(item.importance, 3)
-        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["Price", "Channels"])
-        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted), [true, false])
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.title), ["Channels", "Price"])
+        XCTAssertEqual(item.subtasks.sorted { $0.order < $1.order }.map(\.isCompleted), [false, true])
     }
 
     func testUpdatingSubtaskKeepsItsExistingAttachment() throws {
@@ -79,7 +79,7 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.isCompleted), [false, false, false, true])
     }
 
-    func testMovingAnIncompleteSubtaskPreservesAnInterleavedCompletedItem() throws {
+    func testMovingAnIncompleteSubtaskKeepsCompletedItemsAtTheEnd() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)
         let item = try repository.saveNewTask(
@@ -95,8 +95,8 @@ final class TaskRepositoryEditingTests: XCTestCase {
         try repository.moveSubtask(second, after: third)
 
         let ordered = item.subtasks.sorted { $0.order < $1.order }
-        XCTAssertEqual(ordered.map(\.title), ["第一项", "已完成", "第三项", "第二项"])
-        XCTAssertEqual(ordered.map(\.isCompleted), [false, true, false, false])
+        XCTAssertEqual(ordered.map(\.title), ["第一项", "第三项", "第二项", "已完成"])
+        XCTAssertEqual(ordered.map(\.isCompleted), [false, false, false, true])
     }
 
     func testMovingAnEarlierSubtaskBeforeALaterSubtaskKeepsTheTargetPosition() throws {

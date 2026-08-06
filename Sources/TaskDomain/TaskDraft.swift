@@ -73,14 +73,28 @@ public struct TaskDraft: Equatable, Sendable {
     public mutating func toggleSubtaskCompletion(at index: Int) {
         normalizeSubtaskOrdering()
         guard subtasks.indices.contains(index) else { return }
-        subtaskCompletion[index].toggle()
+
+        let title = subtasks.remove(at: index)
+        let id = subtaskIDs.remove(at: index)
+        let isCompleted = !subtaskCompletion.remove(at: index)
+
+        if isCompleted {
+            subtasks.append(title)
+            subtaskCompletion.append(true)
+            subtaskIDs.append(id)
+        } else {
+            subtasks.insert(title, at: 0)
+            subtaskCompletion.insert(false, at: 0)
+            subtaskIDs.insert(id, at: 0)
+        }
     }
 
     public mutating func addSubtask(_ title: String) {
         normalizeSubtaskOrdering()
-        subtasks.append(title)
-        subtaskCompletion.append(false)
-        subtaskIDs.append(UUID())
+        let insertionIndex = subtaskCompletion.firstIndex(of: true) ?? subtasks.count
+        subtasks.insert(title, at: insertionIndex)
+        subtaskCompletion.insert(false, at: insertionIndex)
+        subtaskIDs.insert(UUID(), at: insertionIndex)
     }
 
     public mutating func normalizeSubtaskOrdering() {
@@ -91,6 +105,14 @@ public struct TaskDraft: Equatable, Sendable {
                 contentsOf: Array(repeating: false, count: subtasks.count - subtaskCompletion.count)
             )
         }
+
+        let items = subtasks.indices.map { index in
+            (id: subtaskIDs[index], title: subtasks[index], isCompleted: subtaskCompletion[index])
+        }
+        let orderedItems = items.filter { !$0.isCompleted } + items.filter(\.isCompleted)
+        subtaskIDs = orderedItems.map(\.id)
+        subtasks = orderedItems.map(\.title)
+        subtaskCompletion = orderedItems.map(\.isCompleted)
     }
 
     private static func alignedSubtaskIDs(_ ids: [UUID], count: Int) -> [UUID] {
