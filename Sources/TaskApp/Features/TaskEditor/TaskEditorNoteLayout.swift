@@ -31,9 +31,14 @@ enum TaskEditorNoteLineCounter {
         storage.addLayoutManager(manager)
         manager.addTextContainer(container)
 
-        let glyphRange = manager.glyphRange(for: container)
+        return count(using: manager, textContainer: container)
+    }
+
+    static func count(using layoutManager: NSLayoutManager, textContainer: NSTextContainer) -> Int {
+        layoutManager.ensureLayout(for: textContainer)
+        let glyphRange = layoutManager.glyphRange(for: textContainer)
         var lineCount = 0
-        manager.enumerateLineFragments(forGlyphRange: glyphRange) { _, _, _, _, _ in
+        layoutManager.enumerateLineFragments(forGlyphRange: glyphRange) { _, _, _, _, _ in
             lineCount += 1
         }
         return max(1, lineCount)

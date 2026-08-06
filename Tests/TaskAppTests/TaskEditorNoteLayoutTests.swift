@@ -27,4 +27,10 @@ final class TaskEditorNoteLayoutTests: XCTestCase {
         let text = String(repeating: "任", count: 20)
         XCTAssertGreaterThan(TaskEditorNoteLineCounter.count(in: text, width: 40), 1)
     }
+
+    func testAdaptiveNoteEditorUsesActualTextLayoutAndInternalScrolling() {
+        XCTAssertTrue(AdaptiveNoteTextEditorLayout.measuresActualLineFragments)
+        XCTAssertTrue(AdaptiveNoteTextEditorLayout.usesInternalScrolling)
+        XCTAssertEqual(AdaptiveNoteTextEditorLayout.accessibilityLabel, "任务备注")
+    }
 }
