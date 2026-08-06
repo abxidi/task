@@ -9,4 +9,8 @@ final class AppRouteNavigationTests: XCTestCase {
         )
         XCTAssertEqual(AppRoute.priorityMap.sidebarTitle, "分布地图")
     }
+
+    func testTaskAppShellStartsInFocusPool() {
+        XCTAssertEqual(TaskAppShell.defaultRoute, .focusPool)
+    }
 }

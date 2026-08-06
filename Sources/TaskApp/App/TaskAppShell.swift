@@ -2,7 +2,9 @@ import SwiftUI
 import TaskAI
 
 struct TaskAppShell: View {
-    @State private var selection: AppRoute? = .priorityMap
+    static let defaultRoute: AppRoute = .focusPool
+
+    @State private var selection: AppRoute? = defaultRoute
     @State private var listScope: TaskListScope?
     @StateObject private var taskEditorCoordinator = TaskEditorPresentationCoordinator()
     @AppStorage("aiConfigurationJSON") private var configurationJSON = ""
@@ -30,7 +32,7 @@ struct TaskAppShell: View {
             }
 
             Group {
-                switch selection ?? .priorityMap {
+                switch selection ?? Self.defaultRoute {
                 case .priorityMap:
                     PriorityMapScreen(isAIConfigured: isAIConfigured) {
                         taskEditorCoordinator.present(.create)
