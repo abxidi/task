@@ -65,6 +65,7 @@ enum FocusSubtaskCompletionSource {
 }
 
 enum FocusPoolPresentation {
+    static let pageTitle = AppRoute.focusPool.sidebarTitle
     static let pageTitleFontSize: CGFloat = 26
     static let actionFontSize: CGFloat = 11
     static let taskTitleFontSize: CGFloat = 11
@@ -305,7 +306,7 @@ struct FocusPoolScreen: View {
                 Text("工作台")
                     .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(TaskDesignTokens.quiet)
-                Text("正在做")
+                Text(FocusPoolPresentation.pageTitle)
                     .font(TaskDesignTokens.pageTitleFont)
                     .foregroundStyle(TaskDesignTokens.ink)
             }

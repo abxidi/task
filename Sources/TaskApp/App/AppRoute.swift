@@ -20,7 +20,7 @@ enum AppRoute: String, CaseIterable, Identifiable {
         switch self {
         case .priorityMap: "分布地图"
         case .taskList: "任务列表"
-        case .focusPool: "正在做"
+        case .focusPool: "正在进行"
         case .projectBoard: "项目看板"
         case .insights: "数据洞察"
         case .settings: "设置"

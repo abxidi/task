@@ -202,7 +202,7 @@ let importance = Int((normalizedY * 6).rounded()) - 3
 
 顺序固定：
 
-1. 正在做。
+1. 正在进行。
 2. 任务列表。
 3. 分布地图。
 4. 项目看板。
@@ -213,7 +213,7 @@ let importance = Int((normalizedY * 6).rounded()) - 3
 导航行高度 `34 pt`。选中行使用石墨背景和白色文字，图标使用酸橙色。使用 SF Symbols：
 
 ```text
-正在做: scope
+正在进行: scope
 任务列表: checkmark.circle
 分布地图: square.grid.3x3
 项目看板: rectangle.3.group

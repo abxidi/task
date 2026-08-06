@@ -4,6 +4,11 @@ import TaskPersistence
 @testable import TaskApp
 
 final class FocusPoolPresentationTests: XCTestCase {
+    func testFocusPoolPageTitleMatchesTheSidebarTitle() {
+        XCTAssertEqual(FocusPoolPresentation.pageTitle, "正在进行")
+        XCTAssertEqual(FocusPoolPresentation.pageTitle, AppRoute.focusPool.sidebarTitle)
+    }
+
     func testEveryFocusStateHasTheApprovedVisibleTitle() {
         XCTAssertEqual(FocusStatePresentation.title(for: .focused), "专注")
         XCTAssertEqual(FocusStatePresentation.title(for: .waiting), "等待")
