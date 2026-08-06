@@ -8,6 +8,7 @@ struct AppSidebar: View {
     @Query(filter: #Predicate<Project> { !$0.isArchived }, sort: \Project.createdAt)
     private var projects: [Project]
     @Query private var allTasks: [TaskItem]
+    @Query private var focusEntries: [FocusEntry]
     var isAIConfigured: Bool = false
 
     var body: some View {
@@ -20,8 +21,14 @@ struct AppSidebar: View {
             sectionLabel("工作台")
             navRow(.priorityMap, title: "优先级地图", symbol: "square.grid.3x3", count: openCount)
             navRow(.taskList, title: "任务列表", symbol: "checkmark.circle", count: openCount)
+            navRow(.focusPool, title: "正在做", symbol: "scope", count: focusEntries.count)
             navRow(.projectBoard, title: "项目看板", symbol: "rectangle.3.group")
             navRow(.insights, title: "数据洞察", symbol: "chart.xyaxis.line")
+
+            sectionLabel("快捷筛选")
+            filterRow(.today, title: "今天", symbol: "sun.max", count: todayCount)
+            filterRow(.nextSevenDays, title: "未来 7 天", symbol: "calendar")
+            filterRow(.all, title: "全部任务", symbol: "checklist", count: allTaskCount)
 
             if !projects.isEmpty {
                 sectionLabel("项目")
@@ -106,6 +113,17 @@ struct AppSidebar: View {
         .buttonStyle(.plain)
     }
 
+    private func filterRow(_ scope: TaskListScope, title: String, symbol: String, count: Int? = nil) -> some View {
+        let active = selection == .taskList && listScope == scope
+        return Button {
+            selection = .taskList
+            listScope = scope
+        } label: {
+            rowContent(title: title, symbol: symbol, count: count, active: active)
+        }
+        .buttonStyle(.plain)
+    }
+
     private func rowContent(title: String, symbol: String, count: Int?, active: Bool) -> some View {
         HStack(spacing: 9) {
             Image(systemName: symbol)
@@ -135,6 +153,16 @@ struct AppSidebar: View {
     }
 
     private var openCount: Int { allTasks.filter { !$0.isCompleted }.count }
+    private var allTaskCount: Int { allTasks.filter { $0.project == nil }.count }
+    private var todayCount: Int {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: .now)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        return allTasks.filter { item in
+            guard !item.isCompleted, let due = item.dueAt else { return false }
+            return due >= start && due < end
+        }.count
+    }
 }
 
 extension Color {
