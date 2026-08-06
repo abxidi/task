@@ -42,6 +42,12 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(FocusStatePresentation.usesDarkSelectionText(for: .blocked))
     }
 
+    func testFocusStatesUseTheSignalLightReferencePalette() {
+        XCTAssertEqual(FocusStateColorToken.green.signalLightHex, 0x35D6B5)
+        XCTAssertEqual(FocusStateColorToken.yellow.signalLightHex, 0xF2C440)
+        XCTAssertEqual(FocusStateColorToken.red.signalLightHex, 0xEF5058)
+    }
+
     func testCompletedTasksCannotBeAddedToFocusPool() {
         XCTAssertTrue(FocusPoolPresentation.canAddTask(isCompleted: false, hasFocusEntry: false))
         XCTAssertFalse(FocusPoolPresentation.canAddTask(isCompleted: true, hasFocusEntry: false))
@@ -68,15 +74,32 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(FocusPoolPresentation.showsStatusSymbol)
     }
 
-    func testFocusStatusControlUsesNeutralInsetCellsWithSeparateMarkers() {
-        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 270)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 90)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentHeight, 48)
-        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerSize, 10)
-        XCTAssertEqual(FocusPoolPresentation.unselectedStatusMarkerSize, 8)
+    func testFocusStatusControlUsesCompactSegmentedRailWithSeparateMarkers() {
+        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
+        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)
+        XCTAssertEqual(FocusPoolPresentation.statusControlHeight, 32)
+        XCTAssertEqual(FocusPoolPresentation.statusSegmentHeight, 28)
+        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerSize, 11)
+        XCTAssertEqual(FocusPoolPresentation.unselectedStatusMarkerSize, 11)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesNeutralSurface)
         XCTAssertTrue(FocusPoolPresentation.statusControlSeparatesMarkerAndTitle)
+        XCTAssertTrue(FocusPoolPresentation.statusControlPlacesTitleAfterMarker)
+        XCTAssertTrue(FocusPoolPresentation.statusControlUsesSegmentedRail)
+        XCTAssertTrue(FocusPoolPresentation.statusControlUsesUniformMarkerSize)
+        XCTAssertTrue(FocusPoolPresentation.selectedStatusMarkerUsesDotMatrix)
+        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerDotCount, 9)
         XCTAssertFalse(FocusPoolPresentation.statusControlUsesFilledStateBackground)
+    }
+
+    func testFocusStatusMarkerFillsOnlyTheSelectedState() {
+        XCTAssertEqual(
+            FocusPoolPresentation.markerStyle(isSelected: true),
+            .filled
+        )
+        XCTAssertEqual(
+            FocusPoolPresentation.markerStyle(isSelected: false),
+            .hollow
+        )
     }
 
     func testFocusCardsUseTwoColumnsAndPlainNoteField() {
@@ -100,8 +123,8 @@ final class FocusPoolPresentationTests: XCTestCase {
     }
 
     func testStatusControlAlignsWithTheNoteField() {
-        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 270)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 90)
+        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
+        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesLeadingAlignment)
         XCTAssertFalse(FocusPoolPresentation.statusControlUsesTrailingSpacer)
         XCTAssertFalse(FocusPoolPresentation.statusControlUsesNativePicker)

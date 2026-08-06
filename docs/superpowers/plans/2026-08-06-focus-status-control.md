@@ -1,5 +1,7 @@
 # 正在做状态控件 Implementation Plan
 
+> 本计划记录首版“内嵌状态格”的实现过程。后续按用户确认的 B 方案调整为紧凑分段轨道：总宽 `240 pt`、总高 `32 pt`，状态圆点在文字左侧，选中实心、未选中空心；现行验收以 `docs/ui/task-macos-ui-spec.md` 为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将正在做任务卡的三态状态控件重做为与应用整体一致的内嵌状态格，分离状态标记和文字，且不改变状态持久化。

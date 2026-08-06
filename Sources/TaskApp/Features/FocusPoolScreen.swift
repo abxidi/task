@@ -9,13 +9,22 @@ enum FocusStateColorToken: String, Hashable {
     case yellow
     case red
 
-    var color: Color {
+    var signalLightHex: UInt32 {
         switch self {
-        case .green: TaskDesignTokens.success
-        case .yellow: TaskDesignTokens.warning
-        case .red: TaskDesignTokens.danger
+        case .green: 0x35D6B5
+        case .yellow: 0xF2C440
+        case .red: 0xEF5058
         }
     }
+
+    var color: Color {
+        Color(hex: signalLightHex)
+    }
+}
+
+enum FocusStateMarkerStyle: Equatable {
+    case filled
+    case hollow
 }
 
 enum FocusStatePresentation {
@@ -62,12 +71,18 @@ enum FocusPoolPresentation {
     static let usesTwoColumnCard = true
     static let cardColumnSpacing: CGFloat = 20
     static let subtaskColumnMinWidth: CGFloat = 280
-    static let statusControlWidth: CGFloat = 270
-    static let statusSegmentWidth: CGFloat = 90
+    static let statusControlWidth: CGFloat = 240
+    static let statusControlHeight: CGFloat = 32
+    static let statusSegmentWidth: CGFloat = 78
     static let statusControlFontSize: CGFloat = 11
-    static let statusSegmentHeight: CGFloat = 48
-    static let selectedStatusMarkerSize: CGFloat = 10
-    static let unselectedStatusMarkerSize: CGFloat = 8
+    static let statusSegmentHeight: CGFloat = 28
+    static let selectedStatusMarkerSize: CGFloat = 11
+    static let unselectedStatusMarkerSize: CGFloat = 11
+    static let selectedStatusMarkerUsesDotMatrix = true
+    static let selectedStatusMarkerDotCount = 9
+    static let statusControlUsesSegmentedRail = true
+    static let statusControlPlacesTitleAfterMarker = true
+    static let statusControlUsesUniformMarkerSize = true
     static let statusControlUsesNeutralSurface = true
     static let statusControlSeparatesMarkerAndTitle = true
     static let statusControlUsesFilledStateBackground = false
@@ -80,6 +95,10 @@ enum FocusPoolPresentation {
     static let subtasksSupportReordering = true
     static let subtasksShowInsertionIndicator = true
     static let showsStatusSymbol = false
+
+    static func markerStyle(isSelected: Bool) -> FocusStateMarkerStyle {
+        isSelected ? .filled : .hollow
+    }
 
     static func canAddTask(isCompleted: Bool, hasFocusEntry: Bool) -> Bool {
         !isCompleted && !hasFocusEntry
@@ -138,12 +157,25 @@ private struct FocusStateSegmentedControl: View {
     @Binding var selection: TaskFocusState
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 1) {
             ForEach(TaskFocusState.allCases, id: \.self) { option in
                 segment(for: option)
             }
         }
-        .frame(width: FocusPoolPresentation.statusControlWidth, alignment: .leading)
+        .padding(2)
+        .frame(
+            width: FocusPoolPresentation.statusControlWidth,
+            height: FocusPoolPresentation.statusControlHeight,
+            alignment: .leading
+        )
+        .background(
+            TaskDesignTokens.settingsPanel,
+            in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
+                .stroke(TaskDesignTokens.line, lineWidth: 1)
+        )
     }
 
     private func segment(for option: TaskFocusState) -> some View {
@@ -161,10 +193,10 @@ private struct FocusStateSegmentedControl: View {
     }
 
     private func segmentLabel(title: String, state: TaskFocusState, isSelected: Bool) -> some View {
-        VStack(spacing: 5) {
+        HStack(spacing: 5) {
             statusMarker(for: state, isSelected: isSelected)
             Text(title)
-                .font(.system(size: 10, weight: .semibold))
+                .font(.system(size: FocusPoolPresentation.statusControlFontSize, weight: .semibold))
                 .foregroundStyle(isSelected ? TaskDesignTokens.ink : TaskDesignTokens.muted)
         }
         .frame(
@@ -178,41 +210,45 @@ private struct FocusStateSegmentedControl: View {
                     .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
             }
         }
-        .overlay {
-            if isSelected {
-                RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
-                    .stroke(FocusStatePresentation.selectionColor(for: state).opacity(0.32), lineWidth: 1)
-            }
-        }
-            .contentShape(Rectangle())
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
     private func statusMarker(for state: TaskFocusState, isSelected: Bool) -> some View {
         let color = FocusStatePresentation.selectionColor(for: state)
-        if isSelected {
-            Circle()
-                .stroke(color, lineWidth: 2)
-                .frame(
-                    width: FocusPoolPresentation.selectedStatusMarkerSize,
-                    height: FocusPoolPresentation.selectedStatusMarkerSize
-                )
-                .background {
-                    Circle()
-                        .fill(color.opacity(0.14))
-                        .frame(
-                            width: FocusPoolPresentation.selectedStatusMarkerSize + 6,
-                            height: FocusPoolPresentation.selectedStatusMarkerSize + 6
-                        )
-                }
+        if FocusPoolPresentation.markerStyle(isSelected: isSelected) == .filled {
+            ZStack {
+                Circle()
+                    .fill(color)
+                signalLensDotMatrix
+            }
+            .frame(
+                width: FocusPoolPresentation.selectedStatusMarkerSize,
+                height: FocusPoolPresentation.selectedStatusMarkerSize
+            )
         } else {
             Circle()
-                .fill(color)
+                .stroke(color, lineWidth: 1.5)
                 .frame(
                     width: FocusPoolPresentation.unselectedStatusMarkerSize,
                     height: FocusPoolPresentation.unselectedStatusMarkerSize
                 )
         }
+    }
+
+    private var signalLensDotMatrix: some View {
+        VStack(spacing: 0.9) {
+            ForEach(0..<3, id: \.self) { _ in
+                HStack(spacing: 0.9) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Circle()
+                            .fill(Color.white.opacity(0.52))
+                            .frame(width: 1.2, height: 1.2)
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
 
