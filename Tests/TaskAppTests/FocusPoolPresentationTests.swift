@@ -79,6 +79,11 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(FocusPoolPresentation.showsStatusSymbol)
     }
 
+    func testFocusSubtaskTitlesUseUnboundedMultilineText() {
+        XCTAssertTrue(FocusPoolPresentation.subtaskTitlesUseMultilineField)
+        XCTAssertNil(FocusPoolPresentation.subtaskTitleMaximumLineCount)
+    }
+
     func testFocusStatusControlUsesCompactSegmentedRailWithSeparateMarkers() {
         XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
         XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)

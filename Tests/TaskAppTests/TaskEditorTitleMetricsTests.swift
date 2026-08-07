@@ -32,6 +32,11 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.minimumHeight, 40)
     }
 
+    func testTaskListSubtaskTitlesUseUnboundedMultilineText() {
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.subtaskTitlesUseMultilineField)
+        XCTAssertNil(TaskEditorSubtaskEntryStyle.subtaskTitleMaximumLineCount)
+    }
+
     func testAddedSubtasksUseTheUnnestedEditorRows() {
         XCTAssertFalse(TaskEditorSubtaskEntryStyle.usesSharedListRows)
     }

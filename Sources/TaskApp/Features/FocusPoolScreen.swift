@@ -95,6 +95,8 @@ enum FocusPoolPresentation {
     static let subtasksUseCheckboxes = true
     static let subtasksSupportReordering = true
     static let subtasksShowInsertionIndicator = true
+    static let subtaskTitlesUseMultilineField = true
+    static let subtaskTitleMaximumLineCount: Int? = nil
     static let showsStatusSymbol = false
 
     static func markerStyle(isSelected: Bool) -> FocusStateMarkerStyle {
@@ -741,7 +743,8 @@ private struct FocusSubtaskTitleEditor: View {
             .font(.system(size: 12))
             .foregroundStyle(isCompleted ? TaskDesignTokens.quiet : TaskDesignTokens.muted)
             .strikethrough(isCompleted)
-            .lineLimit(1...2)
+            .lineLimit(1...)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .focused($isFocused)
             .onSubmit(commit)

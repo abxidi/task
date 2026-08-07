@@ -57,7 +57,7 @@ struct SubtaskEditor: View {
 
     private func subtaskRow(index: Int, id: UUID) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+            HStack(alignment: .top, spacing: 8) {
                 Button {
                     onToggle(index)
                 } label: {
@@ -69,11 +69,13 @@ struct SubtaskEditor: View {
                 .frame(width: TaskEditorSubtaskEntryStyle.iconFrameSize, height: TaskEditorSubtaskEntryStyle.iconFrameSize)
                 .accessibilityLabel(completion[index] ? "标记为未完成" : "标记为已完成")
 
-                TextField("子任务", text: binding(for: index))
+                TextField("子任务", text: binding(for: index), axis: .vertical)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
                     .foregroundStyle(Color(hex: 0x50544C))
                     .strikethrough(completion[index])
+                    .lineLimit(1...)
+                    .fixedSize(horizontal: false, vertical: true)
                     .onPasteCommand(of: [.image]) { providers in
                         receiveImage(from: providers, for: id)
                     }
@@ -286,6 +288,8 @@ enum TaskEditorSubtaskEntryStyle {
     static let iconSize: CGFloat = 12
     static let iconFrameSize: CGFloat = 18
     static let minimumHeight: CGFloat = 40
+    static let subtaskTitlesUseMultilineField = true
+    static let subtaskTitleMaximumLineCount: Int? = nil
     static let showsReorderInsertionIndicator = true
     static let supportsEndDropInsertion = true
 }
