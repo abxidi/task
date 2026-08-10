@@ -2,6 +2,8 @@ import AppKit
 import SwiftUI
 
 enum TaskScrollIndicatorStyle {
+    static let hidesSwiftUIIndicators = true
+
     static func configure(_ scrollView: NSScrollView) {
         scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
@@ -10,7 +12,8 @@ enum TaskScrollIndicatorStyle {
 
 extension View {
     func taskSubtleScrollIndicators() -> some View {
-        background(TaskScrollIndicatorConfigurator())
+        scrollIndicators(TaskScrollIndicatorStyle.hidesSwiftUIIndicators ? .hidden : .automatic)
+            .background(TaskScrollIndicatorConfigurator())
     }
 }
 

@@ -13,4 +13,8 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
         XCTAssertFalse(scrollView.hasVerticalScroller)
         XCTAssertFalse(scrollView.hasHorizontalScroller)
     }
+
+    func testAlsoUsesSwiftUIIndicatorSuppression() {
+        XCTAssertTrue(TaskScrollIndicatorStyle.hidesSwiftUIIndicators)
+    }
 }
