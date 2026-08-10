@@ -3,10 +3,8 @@ import SwiftUI
 
 enum TaskScrollIndicatorStyle {
     static func configure(_ scrollView: NSScrollView) {
-        scrollView.scrollerStyle = .overlay
-        scrollView.autohidesScrollers = true
-        scrollView.verticalScroller?.controlSize = .small
-        scrollView.horizontalScroller?.controlSize = .small
+        scrollView.hasVerticalScroller = false
+        scrollView.hasHorizontalScroller = false
     }
 }
 
