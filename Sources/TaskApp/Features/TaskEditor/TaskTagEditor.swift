@@ -41,6 +41,7 @@ struct TaskTagEditor: View {
                     tagPickerButton
                 }
             }
+            .taskSubtleScrollIndicators()
             .frame(maxWidth: 430, alignment: .leading)
         }
         .onAppear {

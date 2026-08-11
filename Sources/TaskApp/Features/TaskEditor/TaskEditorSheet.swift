@@ -64,7 +64,7 @@ struct TaskEditorSheet: View {
             .frame(height: 40)
             .background(TaskDesignTokens.panel)
 
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(spacing: 0) {
                         HStack(spacing: 12) {

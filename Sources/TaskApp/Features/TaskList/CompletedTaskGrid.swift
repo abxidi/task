@@ -66,7 +66,7 @@ struct CompletedTaskGrid: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
+                ScrollView(showsIndicators: false) {
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
                         ForEach(tasks, id: \.id) { task in
                             CompletedTaskCard(

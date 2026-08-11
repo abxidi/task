@@ -275,7 +275,7 @@ struct FocusPoolScreen: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
+                ScrollView(showsIndicators: false) {
                     LazyVStack(alignment: .leading, spacing: 8) {
                         ForEach(prioritySortedEntries, id: \.id) { entry in
                             FocusEntryRow(

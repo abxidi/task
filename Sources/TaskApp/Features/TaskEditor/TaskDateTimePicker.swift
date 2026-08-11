@@ -27,7 +27,7 @@ struct TaskDateTimePicker: View {
         unit: String
     ) -> some View {
         ScrollViewReader { proxy in
-            ScrollView(.vertical) {
+            ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 4) {
                     ForEach(values, id: \.self) { value in
                         Button {

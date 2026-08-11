@@ -20,7 +20,7 @@ struct AdaptiveNoteTextEditor: NSViewRepresentable {
         let scrollView = AdaptiveNoteScrollView()
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
-        scrollView.hasVerticalScroller = true
+        scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
         TaskScrollIndicatorStyle.configure(scrollView)
 

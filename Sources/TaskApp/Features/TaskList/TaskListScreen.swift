@@ -152,6 +152,7 @@ struct TaskListScreen: View {
                     .padding(.horizontal, 26)
                     .padding(.bottom, 24)
                 }
+                .taskSubtleScrollIndicators()
             }
         }
         .background(TaskDesignTokens.canvas)

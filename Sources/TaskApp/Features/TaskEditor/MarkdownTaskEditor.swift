@@ -68,7 +68,7 @@ struct MarkdownTaskEditor: View {
 private struct MarkdownPreview: View {
     let markdown: String
     var body: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             Text((try? AttributedString(markdown: markdown)) ?? AttributedString(markdown))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

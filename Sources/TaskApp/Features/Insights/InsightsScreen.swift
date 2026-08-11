@@ -13,7 +13,7 @@ struct InsightsScreen: View {
     @State private var selectedProjectID: UUID?
 
     var body: some View {
-        ScrollView {
+        ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 PageHeader(
                     eyebrow: "数据洞察 · 近 \(rangeDays) 天",

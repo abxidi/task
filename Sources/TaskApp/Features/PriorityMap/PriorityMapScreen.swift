@@ -249,7 +249,7 @@ struct PriorityMapScreen: View {
 
             if let selection {
                 let coordinate = PriorityCoordinate(uncheckedUrgency: selection.urgency, importance: selection.importance)
-                ScrollView {
+                ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 0) {
                         Text("\(coordinate.quadrant.displayName)\(selection.project.map { " · \($0.name)" } ?? "")")
                             .font(.system(size: 9, weight: .heavy))
@@ -269,6 +269,7 @@ struct PriorityMapScreen: View {
                                     }
                                 }
                             }
+                            .taskSubtleScrollIndicators()
                             .padding(.bottom, 12)
                         }
 

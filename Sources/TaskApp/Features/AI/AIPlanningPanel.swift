@@ -40,7 +40,7 @@ struct AIPlanningPanel: View {
                 Rectangle().fill(Color(hex: 0xE1E1DB)).frame(height: 1)
             }
 
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("本周有一个负载风险")
                         .font(.system(size: 17, weight: .semibold, design: .serif))

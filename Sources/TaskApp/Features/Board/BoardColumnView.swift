@@ -178,7 +178,7 @@ struct BoardColumnView: View {
                 }
             }
 
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: 7) {
                     ForEach(Array(tasks.enumerated()), id: \.element.id) { index, task in
                         if targetPlaceholderIndex == index, let draggedTask {

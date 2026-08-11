@@ -97,7 +97,7 @@ struct ProjectBoardScreen: View {
 
     private var boardLayout: some View {
         HStack(spacing: 0) {
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     PageHeader(
                         eyebrow: selectedProject.map { "\($0.name) · 近 \(rangeDays) 天" } ?? "项目看板",
@@ -184,6 +184,7 @@ struct ProjectBoardScreen: View {
                                 }
                             }
                         }
+                        .taskSubtleScrollIndicators()
                     } else {
                         ContentUnavailableView("创建项目", systemImage: "rectangle.3.group", description: Text("项目看板用于推进流程。"))
                             .frame(maxWidth: .infinity, minHeight: 320)
