@@ -37,6 +37,7 @@ private struct MainWindowContent: View {
         TaskAppShell()
             .modelContainer(container)
             .environmentObject(globalShortcutManager)
+            .taskSubtleScrollIndicators()
             .onAppear {
                 TaskWindowActivator.configureMainWindowOpening {
                     openWindow(id: "main")

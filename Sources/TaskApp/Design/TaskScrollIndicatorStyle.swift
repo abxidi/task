@@ -8,6 +8,16 @@ enum TaskScrollIndicatorStyle {
         scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
     }
+
+    static func configureAllScrollViews(in view: NSView) {
+        if let scrollView = view as? NSScrollView {
+            configure(scrollView)
+        }
+
+        for subview in view.subviews {
+            configureAllScrollViews(in: subview)
+        }
+    }
 }
 
 extension View {
@@ -23,23 +33,25 @@ private struct TaskScrollIndicatorConfigurator: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: TaskScrollIndicatorHostView, context: Context) {
-        nsView.configureEnclosingScrollView()
+        nsView.configureScrollViewsInWindow()
     }
 }
 
 private final class TaskScrollIndicatorHostView: NSView {
     override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
-        configureEnclosingScrollView()
+        configureScrollViewsInWindow()
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        configureEnclosingScrollView()
+        configureScrollViewsInWindow()
     }
 
-    func configureEnclosingScrollView() {
-        guard let scrollView = enclosingScrollView else { return }
-        TaskScrollIndicatorStyle.configure(scrollView)
+    func configureScrollViewsInWindow() {
+        DispatchQueue.main.async { [weak self] in
+            guard let contentView = self?.window?.contentView else { return }
+            TaskScrollIndicatorStyle.configureAllScrollViews(in: contentView)
+        }
     }
 }

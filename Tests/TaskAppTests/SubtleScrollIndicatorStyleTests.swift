@@ -17,4 +17,21 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
     func testAlsoUsesSwiftUIIndicatorSuppression() {
         XCTAssertTrue(TaskScrollIndicatorStyle.hidesSwiftUIIndicators)
     }
+
+    func testConfiguresEveryScrollerInTheWindowHierarchy() {
+        let root = NSView()
+        let outerScroller = NSScrollView()
+        let nestedContainer = NSView()
+        let innerScroller = NSScrollView()
+        outerScroller.hasVerticalScroller = true
+        innerScroller.hasHorizontalScroller = true
+        nestedContainer.addSubview(innerScroller)
+        root.addSubview(outerScroller)
+        root.addSubview(nestedContainer)
+
+        TaskScrollIndicatorStyle.configureAllScrollViews(in: root)
+
+        XCTAssertFalse(outerScroller.hasVerticalScroller)
+        XCTAssertFalse(innerScroller.hasHorizontalScroller)
+    }
 }
