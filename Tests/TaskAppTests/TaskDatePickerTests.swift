@@ -3,6 +3,10 @@ import XCTest
 @testable import TaskApp
 
 final class TaskDatePickerTests: XCTestCase {
+    func testDatePickerPrefersOpeningAboveItsTrigger() {
+        XCTAssertEqual(TaskDatePopoverPresentation.preferredArrowEdge, .top)
+    }
+
     func testQuickChoicesUseCalendarAwareOffsets() throws {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try XCTUnwrap(TimeZone(secondsFromGMT: 0))

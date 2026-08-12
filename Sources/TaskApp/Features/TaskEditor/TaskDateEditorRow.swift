@@ -1,5 +1,9 @@
 import SwiftUI
 
+enum TaskDatePopoverPresentation {
+    static let preferredArrowEdge: Edge = .top
+}
+
 struct TaskDateEditorRow: View {
     @Binding var startAt: Date?
     @Binding var dueAt: Date?
@@ -18,7 +22,7 @@ struct TaskDateEditorRow: View {
                 date: startAt,
                 isPresented: $isStartPickerPresented
             )
-            .popover(isPresented: $isStartPickerPresented, arrowEdge: .bottom) {
+            .popover(isPresented: $isStartPickerPresented, arrowEdge: TaskDatePopoverPresentation.preferredArrowEdge) {
                 TaskDatePickerPopover(
                     mode: .start,
                     startAt: $startAt,
@@ -39,7 +43,7 @@ struct TaskDateEditorRow: View {
                 isPresented: $isEndPickerPresented,
                 showsReminder: reminderAt != nil
             )
-            .popover(isPresented: $isEndPickerPresented, arrowEdge: .bottom) {
+            .popover(isPresented: $isEndPickerPresented, arrowEdge: TaskDatePopoverPresentation.preferredArrowEdge) {
                 TaskDatePickerPopover(
                     mode: .end,
                     startAt: $startAt,
