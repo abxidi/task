@@ -1,5 +1,50 @@
 import AppKit
+import ObjectiveC.runtime
 import SwiftUI
+
+@MainActor
+enum TaskScrollIndicatorPolicy {
+    private static var isInstalled = false
+
+    static func install() {
+        guard !isInstalled else { return }
+        guard
+            let verticalSetter = class_getInstanceMethod(
+                NSScrollView.self,
+                #selector(setter: NSScrollView.hasVerticalScroller)
+            ),
+            let taskVerticalSetter = class_getInstanceMethod(
+                NSScrollView.self,
+                #selector(NSScrollView.task_setHasVerticalScroller(_:))
+            ),
+            let horizontalSetter = class_getInstanceMethod(
+                NSScrollView.self,
+                #selector(setter: NSScrollView.hasHorizontalScroller)
+            ),
+            let taskHorizontalSetter = class_getInstanceMethod(
+                NSScrollView.self,
+                #selector(NSScrollView.task_setHasHorizontalScroller(_:))
+            )
+        else {
+            assertionFailure("Unable to install the Task scroll-indicator policy")
+            return
+        }
+
+        method_exchangeImplementations(verticalSetter, taskVerticalSetter)
+        method_exchangeImplementations(horizontalSetter, taskHorizontalSetter)
+        isInstalled = true
+    }
+}
+
+private extension NSScrollView {
+    @objc dynamic func task_setHasVerticalScroller(_: Bool) {
+        task_setHasVerticalScroller(false)
+    }
+
+    @objc dynamic func task_setHasHorizontalScroller(_: Bool) {
+        task_setHasHorizontalScroller(false)
+    }
+}
 
 enum TaskScrollIndicatorStyle {
     static let hidesSwiftUIIndicators = true

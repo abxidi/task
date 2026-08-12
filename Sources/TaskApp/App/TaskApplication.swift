@@ -8,6 +8,10 @@ struct TaskApplication: App {
     private let statusBarController = StatusBarController(TaskWindowActivator.showMainWindow)
     @StateObject private var globalShortcutManager = GlobalShortcutManager()
 
+    init() {
+        TaskScrollIndicatorPolicy.install()
+    }
+
     var body: some Scene {
         WindowGroup("Task", id: "main") {
             MainWindowContent(
