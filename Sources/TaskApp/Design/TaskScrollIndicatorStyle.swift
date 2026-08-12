@@ -9,40 +9,71 @@ enum TaskScrollIndicatorPolicy {
     static func install() {
         guard !isInstalled else { return }
         guard
-            let verticalSetter = class_getInstanceMethod(
-                NSScrollView.self,
-                #selector(setter: NSScrollView.hasVerticalScroller)
+            let drawKnob = class_getInstanceMethod(
+                NSScroller.self,
+                #selector(NSScroller.drawKnob)
             ),
-            let taskVerticalSetter = class_getInstanceMethod(
-                NSScrollView.self,
-                #selector(NSScrollView.task_setHasVerticalScroller(_:))
+            let taskDrawKnob = class_getInstanceMethod(
+                NSScroller.self,
+                #selector(NSScroller.task_drawKnob)
             ),
-            let horizontalSetter = class_getInstanceMethod(
-                NSScrollView.self,
-                #selector(setter: NSScrollView.hasHorizontalScroller)
+            let drawKnobSlot = class_getInstanceMethod(
+                NSScroller.self,
+                #selector(NSScroller.drawKnobSlot(in:highlight:))
             ),
-            let taskHorizontalSetter = class_getInstanceMethod(
+            let taskDrawKnobSlot = class_getInstanceMethod(
+                NSScroller.self,
+                #selector(NSScroller.task_drawKnobSlot(in:highlight:))
+            ),
+            let setScrollerStyle = class_getInstanceMethod(
                 NSScrollView.self,
-                #selector(NSScrollView.task_setHasHorizontalScroller(_:))
+                #selector(setter: NSScrollView.scrollerStyle)
+            ),
+            let taskSetScrollerStyle = class_getInstanceMethod(
+                NSScrollView.self,
+                #selector(NSScrollView.task_setScrollerStyle(_:))
+            ),
+            let setAlphaValue = class_getInstanceMethod(
+                NSView.self,
+                #selector(setter: NSView.alphaValue)
+            ),
+            let taskSetAlphaValue = class_getInstanceMethod(
+                NSView.self,
+                #selector(NSView.task_setAlphaValue(_:))
             )
         else {
             assertionFailure("Unable to install the Task scroll-indicator policy")
             return
         }
 
-        method_exchangeImplementations(verticalSetter, taskVerticalSetter)
-        method_exchangeImplementations(horizontalSetter, taskHorizontalSetter)
+        method_exchangeImplementations(drawKnob, taskDrawKnob)
+        method_exchangeImplementations(drawKnobSlot, taskDrawKnobSlot)
+        method_exchangeImplementations(setScrollerStyle, taskSetScrollerStyle)
+        method_exchangeImplementations(setAlphaValue, taskSetAlphaValue)
         isInstalled = true
     }
 }
 
-private extension NSScrollView {
-    @objc dynamic func task_setHasVerticalScroller(_: Bool) {
-        task_setHasVerticalScroller(false)
+private extension NSScroller {
+    @objc dynamic func task_drawKnob() {
+        // Intentionally empty. Preserve AppKit's native scroller state and
+        // geometry while suppressing only the visual indicator.
     }
 
-    @objc dynamic func task_setHasHorizontalScroller(_: Bool) {
-        task_setHasHorizontalScroller(false)
+    @objc dynamic func task_drawKnobSlot(in _: NSRect, highlight _: Bool) {
+        // Intentionally empty. Legacy scroller tracks must remain invisible too.
+    }
+}
+
+private extension NSScrollView {
+    @objc dynamic func task_setScrollerStyle(_: NSScroller.Style) {
+        task_setScrollerStyle(.overlay)
+    }
+}
+
+private extension NSView {
+    @objc dynamic func task_setAlphaValue(_ alphaValue: CGFloat) {
+        task_setAlphaValue(self is NSScroller ? 0 : alphaValue)
     }
 }
 
@@ -51,8 +82,10 @@ enum TaskScrollIndicatorStyle {
     static let appliesBeforeFirstFrame = true
 
     static func configure(_ scrollView: NSScrollView) {
-        scrollView.hasVerticalScroller = false
-        scrollView.hasHorizontalScroller = false
+        scrollView.scrollerStyle = .overlay
+        scrollView.horizontalScrollElasticity = .none
+        scrollView.verticalScroller?.alphaValue = 0
+        scrollView.horizontalScroller?.alphaValue = 0
     }
 
     static func configureAllScrollViews(in view: NSView) {

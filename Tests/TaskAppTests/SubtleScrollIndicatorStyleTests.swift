@@ -5,28 +5,61 @@ import XCTest
 
 final class SubtleScrollIndicatorStyleTests: XCTestCase {
     @MainActor
-    func testInstalledPolicyRejectsLaterAttemptsToReenableScrollers() {
+    func testInstalledPolicyPreservesNativeScrollerState() {
         TaskScrollIndicatorPolicy.install()
         let scrollView = NSScrollView()
 
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
 
-        XCTAssertFalse(scrollView.hasVerticalScroller)
-        XCTAssertFalse(scrollView.hasHorizontalScroller)
+        XCTAssertTrue(scrollView.hasVerticalScroller)
+        XCTAssertTrue(scrollView.hasHorizontalScroller)
+    }
+
+    @MainActor
+    func testInstalledPolicySuppressesScrollerRenderingWithoutRemovingIt() throws {
+        TaskScrollIndicatorPolicy.install()
+        let scroller = NSScroller(frame: NSRect(x: 0, y: 0, width: 16, height: 120))
+        scroller.scrollerStyle = .legacy
+        scroller.doubleValue = 0.4
+        scroller.knobProportion = 0.2
+        let representation = try XCTUnwrap(
+            scroller.bitmapImageRepForCachingDisplay(in: scroller.bounds)
+        )
+
+        scroller.cacheDisplay(in: scroller.bounds, to: representation)
+
+        let pixels = try XCTUnwrap(representation.bitmapData)
+        let byteCount = representation.bytesPerRow * representation.pixelsHigh
+        XCTAssertEqual(UnsafeBufferPointer(start: pixels, count: byteCount).filter { $0 != 0 }.count, 0)
+    }
+
+    @MainActor
+    func testInstalledPolicyKeepsScrollerTransparentWhenAppKitTriesToRevealIt() {
+        TaskScrollIndicatorPolicy.install()
+        let scroller = NSScroller()
+        let ordinaryView = NSView()
+
+        scroller.alphaValue = 1
+        ordinaryView.alphaValue = 0.6
+
+        XCTAssertEqual(scroller.alphaValue, 0)
+        XCTAssertEqual(ordinaryView.alphaValue, 0.6)
     }
 
     @MainActor
     func testInstalledPolicyKeepsContentScrollable() {
         TaskScrollIndicatorPolicy.install()
         let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 200, height: 120))
+        scrollView.hasVerticalScroller = true
         scrollView.documentView = NSView(frame: NSRect(x: 0, y: 0, width: 200, height: 1_000))
 
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: 240))
         scrollView.reflectScrolledClipView(scrollView.contentView)
 
         XCTAssertEqual(scrollView.contentView.bounds.origin.y, 240)
-        XCTAssertFalse(scrollView.hasVerticalScroller)
+        XCTAssertEqual(scrollView.contentView.bounds.origin.x, 0)
+        XCTAssertTrue(scrollView.hasVerticalScroller)
     }
 
     @MainActor
@@ -43,22 +76,41 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
         window.contentView = hostingView
 
         layoutAndDrainRunLoop(hostingView)
-        assertAllScrollersAreDisabled(in: hostingView)
+        assertAllScrollViewsPreserveGeometry(in: hostingView)
 
         hostingView.rootView = scrollContent(rowCount: 120)
         layoutAndDrainRunLoop(hostingView)
-        assertAllScrollersAreDisabled(in: hostingView)
+        assertAllScrollViewsPreserveGeometry(in: hostingView)
     }
 
-    func testDisablesBothScrollers() {
-        let scrollView = NSScrollView()
+    func testConfiguringIndicatorsDoesNotChangeScrollViewGeometry() {
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 320, height: 240))
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
+        let originalContentSize = scrollView.contentSize
 
         TaskScrollIndicatorStyle.configure(scrollView)
 
-        XCTAssertFalse(scrollView.hasVerticalScroller)
-        XCTAssertFalse(scrollView.hasHorizontalScroller)
+        XCTAssertTrue(scrollView.hasVerticalScroller)
+        XCTAssertTrue(scrollView.hasHorizontalScroller)
+        XCTAssertEqual(scrollView.verticalScroller?.alphaValue, 0)
+        XCTAssertEqual(scrollView.horizontalScroller?.alphaValue, 0)
+        XCTAssertEqual(scrollView.contentSize, originalContentSize)
+    }
+
+    @MainActor
+    func testConfiguredScrollViewRejectsLegacyStyleThatWouldConsumeContentWidth() {
+        TaskScrollIndicatorPolicy.install()
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 320, height: 240))
+        scrollView.hasVerticalScroller = true
+        TaskScrollIndicatorStyle.configure(scrollView)
+        let originalContentWidth = scrollView.contentSize.width
+
+        scrollView.scrollerStyle = .legacy
+        scrollView.tile()
+
+        XCTAssertEqual(scrollView.scrollerStyle, .overlay)
+        XCTAssertEqual(scrollView.contentSize.width, originalContentWidth)
     }
 
     func testAlsoUsesSwiftUIIndicatorSuppression() {
@@ -69,7 +121,7 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
         XCTAssertTrue(TaskScrollIndicatorStyle.appliesBeforeFirstFrame)
     }
 
-    func testHostDisablesEnclosingScrollersWhenItJoinsTheHierarchy() {
+    func testHostPreservesEnclosingScrollerGeometryWhenItJoinsTheHierarchy() {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
@@ -77,11 +129,11 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
 
         scrollView.documentView = host
 
-        XCTAssertFalse(scrollView.hasVerticalScroller)
-        XCTAssertFalse(scrollView.hasHorizontalScroller)
+        XCTAssertTrue(scrollView.hasVerticalScroller)
+        XCTAssertTrue(scrollView.hasHorizontalScroller)
     }
 
-    func testConfigureAllScrollViewsDisablesNestedScrollers() {
+    func testConfigureAllScrollViewsPreservesNestedScrollerGeometry() {
         let root = NSView()
         let outer = NSScrollView()
         let container = NSView()
@@ -97,10 +149,10 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
 
         TaskScrollIndicatorStyle.configureAllScrollViews(in: root)
 
-        XCTAssertFalse(outer.hasVerticalScroller)
-        XCTAssertFalse(outer.hasHorizontalScroller)
-        XCTAssertFalse(inner.hasVerticalScroller)
-        XCTAssertFalse(inner.hasHorizontalScroller)
+        XCTAssertTrue(outer.hasVerticalScroller)
+        XCTAssertTrue(outer.hasHorizontalScroller)
+        XCTAssertTrue(inner.hasVerticalScroller)
+        XCTAssertTrue(inner.hasHorizontalScroller)
     }
 
     @MainActor
@@ -124,7 +176,7 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
         hostingView.layoutSubtreeIfNeeded()
     }
 
-    private func assertAllScrollersAreDisabled(
+    private func assertAllScrollViewsPreserveGeometry(
         in root: NSView,
         file: StaticString = #filePath,
         line: UInt = #line
@@ -132,8 +184,11 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
         let scrollViews = allScrollViews(in: root)
         XCTAssertFalse(scrollViews.isEmpty, file: file, line: line)
         for scrollView in scrollViews {
-            XCTAssertFalse(scrollView.hasVerticalScroller, file: file, line: line)
-            XCTAssertFalse(scrollView.hasHorizontalScroller, file: file, line: line)
+            let contentWidth = scrollView.contentSize.width
+            scrollView.contentView.scroll(to: NSPoint(x: 0, y: 40))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+            XCTAssertEqual(scrollView.contentView.bounds.origin.x, 0, file: file, line: line)
+            XCTAssertEqual(scrollView.contentSize.width, contentWidth, file: file, line: line)
         }
     }
 
