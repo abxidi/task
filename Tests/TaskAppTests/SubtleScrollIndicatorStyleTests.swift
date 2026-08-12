@@ -18,6 +18,10 @@ final class SubtleScrollIndicatorStyleTests: XCTestCase {
         XCTAssertTrue(TaskScrollIndicatorStyle.hidesSwiftUIIndicators)
     }
 
+    func testAppliesNativeScrollerSuppressionBeforeTheFirstFrame() {
+        XCTAssertTrue(TaskScrollIndicatorStyle.appliesBeforeFirstFrame)
+    }
+
     func testHostDisablesEnclosingScrollersWhenItJoinsTheHierarchy() {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true

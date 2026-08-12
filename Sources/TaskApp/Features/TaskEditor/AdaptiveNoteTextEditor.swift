@@ -129,7 +129,13 @@ struct AdaptiveNoteTextEditor: NSViewRepresentable {
 final class AdaptiveNoteScrollView: NSScrollView {
     var onLayout: (() -> Void)?
 
+    override func viewWillDraw() {
+        TaskScrollIndicatorStyle.configure(self)
+        super.viewWillDraw()
+    }
+
     override func layout() {
+        TaskScrollIndicatorStyle.configure(self)
         super.layout()
         onLayout?()
     }

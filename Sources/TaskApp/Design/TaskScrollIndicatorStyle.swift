@@ -3,6 +3,7 @@ import SwiftUI
 
 enum TaskScrollIndicatorStyle {
     static let hidesSwiftUIIndicators = true
+    static let appliesBeforeFirstFrame = true
 
     static func configure(_ scrollView: NSScrollView) {
         scrollView.hasVerticalScroller = false
@@ -35,6 +36,7 @@ private struct TaskScrollIndicatorConfigurator: NSViewRepresentable {
     func updateNSView(_ nsView: TaskScrollIndicatorHostView, context: Context) {
         nsView.configureEnclosingScrollView()
         nsView.configureScrollViewsInWindow()
+        nsView.scheduleScrollViewConfiguration()
     }
 }
 
@@ -43,11 +45,18 @@ final class TaskScrollIndicatorHostView: NSView {
         super.viewDidMoveToSuperview()
         configureEnclosingScrollView()
         configureScrollViewsInWindow()
+        scheduleScrollViewConfiguration()
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         configureEnclosingScrollView()
+        configureScrollViewsInWindow()
+        scheduleScrollViewConfiguration()
+    }
+
+    override func viewWillDraw() {
+        super.viewWillDraw()
         configureScrollViewsInWindow()
     }
 
@@ -63,9 +72,13 @@ final class TaskScrollIndicatorHostView: NSView {
     }
 
     func configureScrollViewsInWindow() {
+        guard let contentView = window?.contentView else { return }
+        TaskScrollIndicatorStyle.configureAllScrollViews(in: contentView)
+    }
+
+    func scheduleScrollViewConfiguration() {
         DispatchQueue.main.async { [weak self] in
-            guard let contentView = self?.window?.contentView else { return }
-            TaskScrollIndicatorStyle.configureAllScrollViews(in: contentView)
+            self?.configureScrollViewsInWindow()
         }
     }
 }
