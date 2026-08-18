@@ -72,6 +72,11 @@ enum FocusPoolPresentation {
     static let usesTwoColumnCard = true
     static let cardColumnSpacing: CGFloat = 20
     static let subtaskColumnMinWidth: CGFloat = 280
+    static let subtaskTitleFontSize: CGFloat = 12
+    static let subtaskIconFrameSize: CGFloat = 18
+    static let subtaskRowMinimumHeight: CGFloat = 40
+    static let subtaskRowHorizontalPadding: CGFloat = 10
+    static let subtaskRowVerticalPadding: CGFloat = 8
     static let statusControlWidth: CGFloat = 240
     static let statusControlHeight: CGFloat = 32
     static let statusSegmentWidth: CGFloat = 78
