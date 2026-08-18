@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让“正在进行”子任务列表复用任务编辑器的基础字体、尺寸和间距契约。
+**Goal:** 让“正在进行”子任务列表复用任务编辑器的标题字体契约。
 
-**Architecture:** 在现有 `FocusPoolPresentation` 中增加纯视觉常量；视图仅读取常量，不改变事件处理或领域逻辑。通过展示契约测试验证数值，随后完成 SwiftUI 接入。
+**Architecture:** 在现有 `FocusPoolPresentation` 中增加标题字体常量；视图仅读取该常量，不改变行高、间距、事件处理或领域逻辑。通过展示契约测试验证字体数值，随后完成 SwiftUI 接入。
 
 **Tech Stack:** SwiftUI、XCTest、Swift Package、macOS 14+
 
@@ -23,10 +23,6 @@
 ```swift
 func testFocusSubtaskRowsMatchTaskEditorBaseStyle() {
     XCTAssertEqual(FocusPoolPresentation.subtaskTitleFontSize, 12)
-    XCTAssertEqual(FocusPoolPresentation.subtaskIconFrameSize, 18)
-    XCTAssertEqual(FocusPoolPresentation.subtaskRowMinimumHeight, 40)
-    XCTAssertEqual(FocusPoolPresentation.subtaskRowHorizontalPadding, 10)
-    XCTAssertEqual(FocusPoolPresentation.subtaskRowVerticalPadding, 8)
 }
 ```
 
@@ -34,9 +30,9 @@ func testFocusSubtaskRowsMatchTaskEditorBaseStyle() {
 
 运行 `swift test --filter FocusPoolPresentationTests`，预期因样式常量尚不存在而编译失败。
 
-- [x] **Step 3: Implement the minimal presentation constants**
+- [x] **Step 3: Implement the minimal presentation constant**
 
-在 `FocusPoolPresentation` 中增加上述五个常量，不修改现有行为常量。
+在 `FocusPoolPresentation` 中增加 `subtaskTitleFontSize = 12`，不修改现有行布局常量。
 
 - [x] **Step 4: Verify GREEN**
 
@@ -49,14 +45,14 @@ git add Sources/TaskApp/Features/FocusPoolScreen.swift Tests/TaskAppTests/FocusP
 git commit -m "test: define focus subtask row style contract"
 ```
 
-### Task 2: 接入正在进行子任务行
+### Task 2: 接入正在进行子任务字体
 
 **Files:**
 - Modify: `Sources/TaskApp/Features/FocusPoolScreen.swift`
 
-- [x] **Step 1: Update the row layout**
+- [x] **Step 1: Update the subtask fonts**
 
-将 `subtaskRow` 的复选框 frame、行 padding 和最小高度改为 `FocusPoolPresentation` 常量；将 `FocusSubtaskTitleEditor` 的字体改为对应的标题字体常量。
+将 `FocusSubtaskTitleEditor` 和 `addSubtaskInput` 的字体改为 `FocusPoolPresentation.subtaskTitleFontSize`；保持复选框 frame、行 padding 和最小高度原值。
 
 - [x] **Step 2: Verify focused tests and build**
 

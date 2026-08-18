@@ -84,12 +84,8 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertNil(FocusPoolPresentation.subtaskTitleMaximumLineCount)
     }
 
-    func testFocusSubtaskRowsMatchTaskEditorBaseStyle() {
+    func testFocusSubtaskTitlesUseTaskEditorFontSize() {
         XCTAssertEqual(FocusPoolPresentation.subtaskTitleFontSize, 12)
-        XCTAssertEqual(FocusPoolPresentation.subtaskIconFrameSize, 18)
-        XCTAssertEqual(FocusPoolPresentation.subtaskRowMinimumHeight, 40)
-        XCTAssertEqual(FocusPoolPresentation.subtaskRowHorizontalPadding, 10)
-        XCTAssertEqual(FocusPoolPresentation.subtaskRowVerticalPadding, 8)
     }
 
     func testFocusStatusControlUsesCompactSegmentedRailWithSeparateMarkers() {

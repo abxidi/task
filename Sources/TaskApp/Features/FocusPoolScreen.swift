@@ -73,10 +73,6 @@ enum FocusPoolPresentation {
     static let cardColumnSpacing: CGFloat = 20
     static let subtaskColumnMinWidth: CGFloat = 280
     static let subtaskTitleFontSize: CGFloat = 12
-    static let subtaskIconFrameSize: CGFloat = 18
-    static let subtaskRowMinimumHeight: CGFloat = 40
-    static let subtaskRowHorizontalPadding: CGFloat = 10
-    static let subtaskRowVerticalPadding: CGFloat = 8
     static let statusControlWidth: CGFloat = 240
     static let statusControlHeight: CGFloat = 32
     static let statusSegmentWidth: CGFloat = 78
@@ -532,17 +528,10 @@ private struct FocusEntryRow: View {
                 Image(systemName: FocusPoolPresentation.checkboxSymbol(for: subtask))
                     .font(.system(size: 13))
                     .foregroundStyle(FocusPoolPresentation.checkboxColor(for: subtask))
-                    .frame(
-                        width: FocusPoolPresentation.subtaskIconFrameSize,
-                        height: FocusPoolPresentation.subtaskIconFrameSize
-                    )
+                    .frame(width: 18, height: 18)
             }
             .buttonStyle(.plain)
-            .frame(
-                width: FocusPoolPresentation.subtaskIconFrameSize,
-                height: FocusPoolPresentation.subtaskIconFrameSize,
-                alignment: .topLeading
-            )
+            .frame(width: 24, height: 24, alignment: .topLeading)
             .contentShape(Rectangle())
             .help(FocusPoolPresentation.completionActionTitle(for: subtask))
             .accessibilityLabel(FocusPoolPresentation.completionAccessibilityLabel(for: subtask))
@@ -565,9 +554,6 @@ private struct FocusEntryRow: View {
                 .help("拖动排序")
                 .accessibilityLabel("拖动排序")
         }
-        .padding(.horizontal, FocusPoolPresentation.subtaskRowHorizontalPadding)
-        .padding(.vertical, FocusPoolPresentation.subtaskRowVerticalPadding)
-        .frame(minHeight: FocusPoolPresentation.subtaskRowMinimumHeight)
         .opacity(FocusPoolPresentation.subtaskRowOpacity(for: subtask, draggingID: reorderCoordinator.sourceID))
         .background {
             GeometryReader { proxy in
@@ -594,10 +580,7 @@ private struct FocusEntryRow: View {
             Image(systemName: "plus")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(TaskDesignTokens.quiet)
-                .frame(
-                    width: FocusPoolPresentation.subtaskIconFrameSize,
-                    height: FocusPoolPresentation.subtaskIconFrameSize
-                )
+                .frame(width: 18, height: 18)
 
             TextField("添加子任务", text: $newSubtaskTitle)
                 .textFieldStyle(.plain)
@@ -612,9 +595,8 @@ private struct FocusEntryRow: View {
                 .accessibilityLabel("添加子任务")
                 .accessibilityHint("按 Return 创建子任务")
         }
-        .padding(.horizontal, FocusPoolPresentation.subtaskRowHorizontalPadding)
-        .padding(.vertical, FocusPoolPresentation.subtaskRowVerticalPadding)
-        .frame(minHeight: FocusPoolPresentation.subtaskRowMinimumHeight)
+        .padding(.horizontal, 10)
+        .frame(minHeight: 36)
         .overlay(
             RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
                 .stroke(
