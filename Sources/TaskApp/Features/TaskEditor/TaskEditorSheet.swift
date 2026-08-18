@@ -179,6 +179,7 @@ struct TaskEditorSheet: View {
             onMove: moveSubtasks,
             onDelete: removeSubtask,
             onAdd: { model.draft.addSubtask($0) },
+            canAttachImages: SubtaskAttachmentInput.isAvailable(forTaskTitle: model.draft.title),
             attachments: attachments(for:),
             onPasteImage: { subtaskID, image in
                 try addAttachment(image, to: subtaskID)
@@ -280,8 +281,12 @@ struct TaskEditorSheet: View {
     }
 
     private func addAttachment(_ image: NSImage, to subtaskID: UUID) throws {
-        guard persistDraft(), let subtask = model.existing?.subtasks.first(where: { $0.id == subtaskID }) else {
-            return
+        guard SubtaskAttachmentInput.isAvailable(forTaskTitle: model.draft.title) else {
+            throw TaskEditorAttachmentError.titleRequired
+        }
+        guard persistDraft() else { throw TaskEditorAttachmentError.saveFailed }
+        guard let subtask = model.existing?.subtasks.first(where: { $0.id == subtaskID }) else {
+            throw TaskEditorAttachmentError.subtaskUnavailable
         }
         let processed = try SubtaskImageProcessor.process(image)
         try SubtaskAttachmentRepository(context: modelContext).add(
@@ -361,5 +366,22 @@ enum TaskEditorPriorityLabel {
         if coordinate.importance >= 2 { return "高优" }
         if coordinate.importance <= -2 { return "低优" }
         return "正常"
+    }
+}
+
+private enum TaskEditorAttachmentError: LocalizedError {
+    case titleRequired
+    case saveFailed
+    case subtaskUnavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .titleRequired:
+            "请先填写任务标题，再添加图片"
+        case .saveFailed:
+            "任务未能保存，无法添加图片"
+        case .subtaskUnavailable:
+            "找不到要添加图片的子任务"
+        }
     }
 }

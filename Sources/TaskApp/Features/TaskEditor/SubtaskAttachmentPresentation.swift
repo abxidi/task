@@ -30,4 +30,8 @@ enum SubtaskAttachmentInput {
     static let supportsDrop = true
     static let supportsFileSelection = true
     static let primaryInputMethod = "paste"
+
+    static func isAvailable(forTaskTitle title: String) -> Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 }

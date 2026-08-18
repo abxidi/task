@@ -30,4 +30,9 @@ final class SubtaskAttachmentPresentationTests: XCTestCase {
         XCTAssertTrue(SubtaskAttachmentInput.supportsFileSelection)
         XCTAssertEqual(SubtaskAttachmentInput.primaryInputMethod, "paste")
     }
+
+    func testAttachmentInputRequiresATaskTitle() {
+        XCTAssertFalse(SubtaskAttachmentInput.isAvailable(forTaskTitle: "  \n"))
+        XCTAssertTrue(SubtaskAttachmentInput.isAvailable(forTaskTitle: "整理发布渠道"))
+    }
 }

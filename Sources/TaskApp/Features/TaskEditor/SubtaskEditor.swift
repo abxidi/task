@@ -11,6 +11,7 @@ struct SubtaskEditor: View {
     let onMove: (IndexSet, Int) -> Void
     let onDelete: (Int) -> Void
     let onAdd: (String) -> Void
+    let canAttachImages: Bool
     let attachments: (UUID) -> [SubtaskAttachment]
     let onPasteImage: (UUID, NSImage) throws -> Void
     let onDeleteAttachment: (SubtaskAttachment) throws -> Void
@@ -150,8 +151,17 @@ struct SubtaskEditor: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .help(values.isEmpty ? "添加图片" : "查看子任务图片")
-        .accessibilityLabel(values.isEmpty ? "添加子任务图片" : "查看子任务图片，共 \(values.count) 张")
+        .disabled(!canAttachImages)
+        .help(
+            canAttachImages
+                ? (values.isEmpty ? "添加图片" : "查看子任务图片")
+                : "请先填写任务标题"
+        )
+        .accessibilityLabel(
+            canAttachImages
+                ? (values.isEmpty ? "添加子任务图片" : "查看子任务图片，共 \(values.count) 张")
+                : "添加子任务图片不可用，请先填写任务标题"
+        )
         .popover(
             isPresented: Binding(
                 get: { attachmentPopoverSubtaskID == subtaskID },

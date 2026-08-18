@@ -42,8 +42,8 @@ struct SubtaskAttachmentPopover: View {
                         ),
                         spacing: 8
                     ) {
-                        ForEach(attachments, id: \.id) { attachment in
-                            attachmentThumbnail(attachment)
+                        ForEach(Array(attachments.enumerated()), id: \.element.id) { index, attachment in
+                            attachmentThumbnail(attachment, position: index + 1)
                         }
                     }
                     .padding(2)
@@ -107,8 +107,10 @@ struct SubtaskAttachmentPopover: View {
         }
     }
 
-    private func attachmentThumbnail(_ attachment: SubtaskAttachment) -> some View {
-        ZStack(alignment: .topTrailing) {
+    private func attachmentThumbnail(_ attachment: SubtaskAttachment, position: Int) -> some View {
+        let positionLabel = String(position)
+        let countLabel = String(attachments.count)
+        return ZStack(alignment: .topTrailing) {
             Button {
                 let images = attachments.map { PreviewImage(id: $0.id, data: $0.imageData) }
                 guard let index = images.firstIndex(where: { $0.id == attachment.id }) else { return }
@@ -139,7 +141,7 @@ struct SubtaskAttachmentPopover: View {
             }
             .buttonStyle(.plain)
             .help("预览图片")
-            .accessibilityLabel("预览图片")
+            .accessibilityLabel("预览图片 " + positionLabel + "，共 " + countLabel + " 张")
 
             Button {
                 remove(attachment)
@@ -153,7 +155,7 @@ struct SubtaskAttachmentPopover: View {
             .background(TaskDesignTokens.raised, in: Circle())
             .offset(x: 4, y: -4)
             .help("删除图片")
-            .accessibilityLabel("删除图片")
+            .accessibilityLabel("删除图片 " + positionLabel + "，共 " + countLabel + " 张")
         }
     }
 
@@ -170,8 +172,15 @@ struct SubtaskAttachmentPopover: View {
 
     private func receiveImages(from providers: [NSItemProvider]) {
         for provider in providers {
-            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
-                guard let data, let image = NSImage(data: data) else { return }
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, error in
+                guard let data else {
+                    reportError(error?.localizedDescription ?? "无法读取拖入的图片")
+                    return
+                }
+                guard let image = NSImage(data: data) else {
+                    reportError("无法读取拖入的图片")
+                    return
+                }
                 DispatchQueue.main.async {
                     add(image)
                 }
@@ -190,7 +199,10 @@ struct SubtaskAttachmentPopover: View {
             defer {
                 if didAccess { url.stopAccessingSecurityScopedResource() }
             }
-            guard let image = NSImage(contentsOf: url) else { continue }
+            guard let image = NSImage(contentsOf: url) else {
+                errorMessage = "无法读取图片：" + url.lastPathComponent
+                continue
+            }
             add(image)
         }
     }
@@ -208,6 +220,12 @@ struct SubtaskAttachmentPopover: View {
             try onDelete(attachment)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func reportError(_ message: String) {
+        DispatchQueue.main.async {
+            errorMessage = message
         }
     }
 }
