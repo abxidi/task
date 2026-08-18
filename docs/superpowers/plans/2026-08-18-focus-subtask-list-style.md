@@ -16,7 +16,7 @@
 - Modify: `Tests/TaskAppTests/FocusPoolPresentationTests.swift`
 - Modify: `Sources/TaskApp/Features/FocusPoolScreen.swift`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 在 `FocusPoolPresentationTests` 中增加：
 
@@ -30,19 +30,19 @@ func testFocusSubtaskRowsMatchTaskEditorBaseStyle() {
 }
 ```
 
-- [ ] **Step 2: Verify RED**
+- [x] **Step 2: Verify RED**
 
 运行 `swift test --filter FocusPoolPresentationTests`，预期因样式常量尚不存在而编译失败。
 
-- [ ] **Step 3: Implement the minimal presentation constants**
+- [x] **Step 3: Implement the minimal presentation constants**
 
 在 `FocusPoolPresentation` 中增加上述五个常量，不修改现有行为常量。
 
-- [ ] **Step 4: Verify GREEN**
+- [x] **Step 4: Verify GREEN**
 
 再次运行 `swift test --filter FocusPoolPresentationTests`，确认测试通过。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add Sources/TaskApp/Features/FocusPoolScreen.swift Tests/TaskAppTests/FocusPoolPresentationTests.swift
@@ -54,15 +54,15 @@ git commit -m "test: define focus subtask row style contract"
 **Files:**
 - Modify: `Sources/TaskApp/Features/FocusPoolScreen.swift`
 
-- [ ] **Step 1: Update the row layout**
+- [x] **Step 1: Update the row layout**
 
 将 `subtaskRow` 的复选框 frame、行 padding 和最小高度改为 `FocusPoolPresentation` 常量；将 `FocusSubtaskTitleEditor` 的字体改为对应的标题字体常量。
 
-- [ ] **Step 2: Verify focused tests and build**
+- [x] **Step 2: Verify focused tests and build**
 
 运行 `swift test --filter FocusPoolPresentationTests` 和 `swift build -c release`，确认样式改动未破坏 FocusPool 及应用编译。
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add Sources/TaskApp/Features/FocusPoolScreen.swift
@@ -74,7 +74,7 @@ git commit -m "fix: align focus subtask row styling"
 **Files:**
 - Verify only; no additional source changes expected.
 
-- [ ] **Step 1: Run required quality gates**
+- [x] **Step 1: Run required quality gates**
 
 ```bash
 swift test
@@ -84,6 +84,6 @@ codesign --verify --deep --strict dist/Task.app
 rg -n -P -- '(?<![0-9])-5(?![0-9])|(?<![0-9])\+5(?![0-9])|11 级|11 个' Sources
 ```
 
-- [ ] **Step 2: Review the final diff**
+- [x] **Step 2: Review the final diff**
 
 确认仅涉及 FocusPool 样式契约、实现和本次设计/计划文档；不包含 API Key、模型或行为变更。
