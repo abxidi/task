@@ -17,6 +17,7 @@ struct SubtaskEditor: View {
 
     @State private var newTitle = ""
     @State private var attachmentRevision = 0
+    @State private var attachmentPopoverSubtaskID: UUID?
     @State private var attachmentError: String?
     @StateObject private var reorderCoordinator = SubtaskReorderCoordinator()
     @State private var subtaskFrames: [UUID: CGRect] = [:]
@@ -81,6 +82,8 @@ struct SubtaskEditor: View {
                     }
                     .accessibilityLabel("子任务")
 
+                attachmentButton(for: id)
+
                 Image(systemName: "line.3.horizontal")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(TaskDesignTokens.quiet)
@@ -103,10 +106,6 @@ struct SubtaskEditor: View {
                 .accessibilityLabel("删除子任务")
             }
 
-            let currentAttachments = attachments(id)
-            if !currentAttachments.isEmpty {
-                attachmentThumbnails(currentAttachments)
-            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -132,40 +131,48 @@ struct SubtaskEditor: View {
         }
     }
 
-    private func attachmentThumbnails(_ values: [SubtaskAttachment]) -> some View {
+    private func attachmentButton(for subtaskID: UUID) -> some View {
         let _ = attachmentRevision
-        return HStack(spacing: 8) {
-            ForEach(values, id: \.id) { attachment in
-                ZStack(alignment: .topTrailing) {
-                    if let image = NSImage(data: attachment.thumbnailData) {
-                        Image(nsImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 72, height: 54)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 4)
-                                    .stroke(TaskDesignTokens.line, lineWidth: 1)
-                            )
-                    }
-
-                    Button {
-                        removeAttachment(attachment)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 13))
-                            .symbolRenderingMode(.hierarchical)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TaskDesignTokens.ink)
-                    .background(TaskDesignTokens.raised, in: Circle())
-                    .offset(x: 4, y: -4)
-                    .help("删除图片")
-                    .accessibilityLabel("删除图片")
+        let values = attachments(subtaskID)
+        return Button {
+            attachmentPopoverSubtaskID = subtaskID
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: values.isEmpty ? "paperclip" : "paperclip.fill")
+                    .font(.system(size: 11, weight: .medium))
+                if !values.isEmpty {
+                    Text("\(values.count)")
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
                 }
             }
+            .foregroundStyle(TaskDesignTokens.muted)
+            .frame(minWidth: 28, minHeight: 24)
+            .contentShape(Rectangle())
         }
-        .padding(.leading, TaskEditorSubtaskEntryStyle.iconFrameSize + 8)
+        .buttonStyle(.plain)
+        .help(values.isEmpty ? "添加图片" : "查看子任务图片")
+        .accessibilityLabel(values.isEmpty ? "添加子任务图片" : "查看子任务图片，共 \(values.count) 张")
+        .popover(
+            isPresented: Binding(
+                get: { attachmentPopoverSubtaskID == subtaskID },
+                set: { isPresented in
+                    if !isPresented { attachmentPopoverSubtaskID = nil }
+                }
+            ),
+            arrowEdge: .trailing
+        ) {
+            SubtaskAttachmentPopover(
+                attachments: values,
+                onAddImage: { image in
+                    try onPasteImage(subtaskID, image)
+                    attachmentRevision += 1
+                },
+                onDelete: { attachment in
+                    try onDeleteAttachment(attachment)
+                    attachmentRevision += 1
+                }
+            )
+        }
     }
 
     private func binding(for index: Int) -> Binding<String> {
@@ -247,15 +254,16 @@ struct SubtaskEditor: View {
     }
 
     private func receiveImage(from providers: [NSItemProvider], for subtaskID: UUID) {
-        guard let provider = providers.first else { return }
-        provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
-            guard let data, let image = NSImage(data: data) else { return }
-            Task { @MainActor in
-                do {
-                    try onPasteImage(subtaskID, image)
-                    attachmentRevision += 1
-                } catch {
-                    attachmentError = error.localizedDescription
+        for provider in providers {
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
+                guard let data, let image = NSImage(data: data) else { return }
+                Task { @MainActor in
+                    do {
+                        try onPasteImage(subtaskID, image)
+                        attachmentRevision += 1
+                    } catch {
+                        attachmentError = error.localizedDescription
+                    }
                 }
             }
         }
