@@ -18,10 +18,12 @@ final class SubtaskAttachmentPresentationTests: XCTestCase {
         XCTAssertFalse(SubtaskAttachmentLayout.requiresInternalScrolling(for: 6))
     }
 
-    func testPreviewKeepsImageProportionWithinApprovedBounds() {
-        XCTAssertEqual(SubtaskAttachmentLayout.previewMaximumDimension, 320)
-        XCTAssertEqual(SubtaskAttachmentLayout.previewMinimumDimension, 120)
-        XCTAssertTrue(SubtaskAttachmentLayout.preservesImageAspectRatio)
+    func testPreviewUsesLargeCenteredOverlayThatDismissesFromBackdrop() {
+        XCTAssertEqual(SubtaskImagePreviewLayout.maximumDimension, 760)
+        XCTAssertEqual(SubtaskImagePreviewLayout.minimumDimension, 240)
+        XCTAssertTrue(SubtaskImagePreviewLayout.preservesImageAspectRatio)
+        XCTAssertTrue(SubtaskImagePreviewLayout.isCenteredInApplication)
+        XCTAssertTrue(SubtaskImagePreviewLayout.dismissesOnOutsideTap)
     }
 
     func testAttachmentInputSupportsPasteDropAndFileSelection() {

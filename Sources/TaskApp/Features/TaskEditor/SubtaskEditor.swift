@@ -15,6 +15,7 @@ struct SubtaskEditor: View {
     let attachments: (UUID) -> [SubtaskAttachment]
     let onPasteImage: (UUID, NSImage) throws -> Void
     let onDeleteAttachment: (SubtaskAttachment) throws -> Void
+    let onPreview: (SubtaskImagePreview) -> Void
 
     @State private var newTitle = ""
     @State private var attachmentRevision = 0
@@ -180,7 +181,8 @@ struct SubtaskEditor: View {
                 onDelete: { attachment in
                     try onDeleteAttachment(attachment)
                     attachmentRevision += 1
-                }
+                },
+                onPreview: onPreview
             )
         }
     }

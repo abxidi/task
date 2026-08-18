@@ -20,18 +20,21 @@ struct TaskEditorSheet: View {
     private let outsideDismissToken: UUID?
     private let onSubtaskCountChange: (Int) -> Void
     private let onNoteHeightChange: (CGFloat) -> Void
+    private let onPreview: (SubtaskImagePreview) -> Void
 
     init(
         mode: TaskEditorMode,
         onClose: (() -> Void)? = nil,
         outsideDismissToken: UUID? = nil,
         onSubtaskCountChange: @escaping (Int) -> Void = { _ in },
-        onNoteHeightChange: @escaping (CGFloat) -> Void = { _ in }
+        onNoteHeightChange: @escaping (CGFloat) -> Void = { _ in },
+        onPreview: @escaping (SubtaskImagePreview) -> Void = { _ in }
     ) {
         self.onClose = onClose
         self.outsideDismissToken = outsideDismissToken
         self.onSubtaskCountChange = onSubtaskCountChange
         self.onNoteHeightChange = onNoteHeightChange
+        self.onPreview = onPreview
         let editorModel: TaskEditorModel
         switch mode {
         case .create:
@@ -184,7 +187,8 @@ struct TaskEditorSheet: View {
             onPasteImage: { subtaskID, image in
                 try addAttachment(image, to: subtaskID)
             },
-            onDeleteAttachment: removeAttachment
+            onDeleteAttachment: removeAttachment,
+            onPreview: onPreview
         )
     }
 

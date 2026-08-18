@@ -19,6 +19,7 @@ struct TaskEditorOverlay: View {
     @State private var outsideDismissToken: UUID?
     @State private var subtaskCount: Int
     @State private var noteHeight: CGFloat
+    @State private var preview: SubtaskImagePreview?
 
     init(mode: TaskEditorMode, onClose: @escaping () -> Void) {
         self.mode = mode
@@ -51,14 +52,26 @@ struct TaskEditorOverlay: View {
                     onNoteHeightChange: { height in
                         guard noteHeight != height else { return }
                         noteHeight = height
-                    }
+                    },
+                    onPreview: { preview = $0 }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .frame(width: panelSize.width, height: panelSize.height)
+
+                if let preview {
+                    SubtaskImagePreviewOverlay(preview: preview) {
+                        self.preview = nil
+                    }
+                    .zIndex(1)
+                }
             }
         }
         .onExitCommand {
-            outsideDismissToken = UUID()
+            if preview != nil {
+                preview = nil
+            } else {
+                outsideDismissToken = UUID()
+            }
         }
         .transition(.opacity)
         .accessibilityAddTraits(.isModal)

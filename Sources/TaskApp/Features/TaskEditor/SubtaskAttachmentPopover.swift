@@ -7,11 +7,11 @@ struct SubtaskAttachmentPopover: View {
     let attachments: [SubtaskAttachment]
     let onAddImage: (NSImage) throws -> Void
     let onDelete: (SubtaskAttachment) throws -> Void
+    let onPreview: (SubtaskImagePreview) -> Void
 
     @State private var isFileImporterPresented = false
     @State private var isDropTargeted = false
     @State private var errorMessage: String?
-    @State private var previewState: AttachmentPreviewState?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -94,9 +94,6 @@ struct SubtaskAttachmentPopover: View {
         ) { result in
             importImages(from: result)
         }
-        .sheet(item: $previewState) { state in
-            SubtaskImagePreviewSheet(images: state.images, initialIndex: state.initialIndex)
-        }
         .alert("无法添加图片", isPresented: Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -112,9 +109,9 @@ struct SubtaskAttachmentPopover: View {
         let countLabel = String(attachments.count)
         return ZStack(alignment: .topTrailing) {
             Button {
-                let images = attachments.map { PreviewImage(id: $0.id, data: $0.imageData) }
+                let images = attachments.map { SubtaskPreviewImage(id: $0.id, data: $0.imageData) }
                 guard let index = images.firstIndex(where: { $0.id == attachment.id }) else { return }
-                previewState = AttachmentPreviewState(images: images, initialIndex: index)
+                onPreview(SubtaskImagePreview(images: images, initialIndex: index))
             } label: {
                 if let image = NSImage(data: attachment.thumbnailData) {
                     Image(nsImage: image)
@@ -227,102 +224,5 @@ struct SubtaskAttachmentPopover: View {
         DispatchQueue.main.async {
             errorMessage = message
         }
-    }
-}
-
-private struct AttachmentPreviewState: Identifiable {
-    let id = UUID()
-    let images: [PreviewImage]
-    let initialIndex: Int
-}
-
-private struct PreviewImage: Identifiable {
-    let id: UUID
-    let data: Data
-}
-
-private struct SubtaskImagePreviewSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let images: [PreviewImage]
-    @State private var index: Int
-
-    init(images: [PreviewImage], initialIndex: Int) {
-        self.images = images
-        _index = State(initialValue: initialIndex)
-    }
-
-    private var current: PreviewImage? {
-        guard images.indices.contains(index) else { return nil }
-        return images[index]
-    }
-
-    var body: some View {
-        VStack(spacing: 12) {
-            HStack {
-                Text("图片预览")
-                    .font(.system(size: 13, weight: .semibold))
-                Spacer()
-                Text("\(index + 1) / \(images.count)")
-                    .font(.system(size: 10))
-                    .foregroundStyle(TaskDesignTokens.quiet)
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .frame(width: 24, height: 24)
-                }
-                .buttonStyle(.plain)
-                .help("关闭预览")
-                .accessibilityLabel("关闭预览")
-            }
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(TaskDesignTokens.canvas)
-
-                if let data = current?.data, let image = NSImage(data: data) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(
-                            minWidth: SubtaskAttachmentLayout.previewMinimumDimension,
-                            maxWidth: SubtaskAttachmentLayout.previewMaximumDimension,
-                            minHeight: SubtaskAttachmentLayout.previewMinimumDimension,
-                            maxHeight: SubtaskAttachmentLayout.previewMaximumDimension
-                        )
-                        .accessibilityLabel("原图预览")
-                } else {
-                    ContentUnavailableView("无法读取图片", systemImage: "photo.badge.exclamationmark")
-                }
-            }
-            .frame(
-                minWidth: SubtaskAttachmentLayout.previewMinimumDimension,
-                maxWidth: SubtaskAttachmentLayout.previewMaximumDimension,
-                minHeight: SubtaskAttachmentLayout.previewMinimumDimension,
-                maxHeight: SubtaskAttachmentLayout.previewMaximumDimension
-            )
-
-            HStack(spacing: 16) {
-                Button {
-                    index = max(0, index - 1)
-                } label: {
-                    Label("上一张", systemImage: "chevron.left")
-                }
-                .disabled(index == 0)
-
-                Button {
-                    index = min(images.count - 1, index + 1)
-                } label: {
-                    Label("下一张", systemImage: "chevron.right")
-                }
-                .disabled(index >= images.count - 1)
-            }
-            .buttonStyle(.borderless)
-            .font(.system(size: 11, weight: .medium))
-        }
-        .padding(18)
-        .frame(minWidth: 380, minHeight: 340)
-        .background(TaskDesignTokens.panel)
-        .onExitCommand { dismiss() }
     }
 }

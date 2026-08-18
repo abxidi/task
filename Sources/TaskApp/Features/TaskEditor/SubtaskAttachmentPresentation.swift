@@ -8,9 +8,6 @@ enum SubtaskAttachmentLayout {
     static let maximumVisibleRows = 2
     static let thumbnailWidth: CGFloat = 72
     static let thumbnailHeight: CGFloat = 54
-    static let previewMaximumDimension: CGFloat = 320
-    static let previewMinimumDimension: CGFloat = 120
-    static let preservesImageAspectRatio = true
 
     static var visibleCapacity: Int {
         gridColumnCount * maximumVisibleRows
@@ -22,6 +19,21 @@ enum SubtaskAttachmentLayout {
 
     static func requiresInternalScrolling(for total: Int) -> Bool {
         total > visibleCapacity
+    }
+}
+
+enum SubtaskImagePreviewLayout {
+    static let minimumDimension: CGFloat = 240
+    static let maximumDimension: CGFloat = 760
+    static let preservesImageAspectRatio = true
+    static let isCenteredInApplication = true
+    static let dismissesOnOutsideTap = true
+
+    static func panelSize(for availableSize: CGSize) -> CGSize {
+        CGSize(
+            width: min(maximumDimension + 80, max(520, availableSize.width - 96)),
+            height: min(maximumDimension + 100, max(420, availableSize.height - 96))
+        )
     }
 }
 
