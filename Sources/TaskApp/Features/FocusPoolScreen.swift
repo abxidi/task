@@ -594,11 +594,14 @@ private struct FocusEntryRow: View {
             Image(systemName: "plus")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(TaskDesignTokens.quiet)
-                .frame(width: 18, height: 18)
+                .frame(
+                    width: FocusPoolPresentation.subtaskIconFrameSize,
+                    height: FocusPoolPresentation.subtaskIconFrameSize
+                )
 
             TextField("添加子任务", text: $newSubtaskTitle)
                 .textFieldStyle(.plain)
-                .font(.system(size: 12))
+                .font(.system(size: FocusPoolPresentation.subtaskTitleFontSize))
                 .foregroundStyle(TaskDesignTokens.muted)
                 .onSubmit(addSubtask)
                 .onKeyPress(.return, phases: .down) { press in
@@ -609,8 +612,9 @@ private struct FocusEntryRow: View {
                 .accessibilityLabel("添加子任务")
                 .accessibilityHint("按 Return 创建子任务")
         }
-        .padding(.horizontal, 10)
-        .frame(minHeight: 36)
+        .padding(.horizontal, FocusPoolPresentation.subtaskRowHorizontalPadding)
+        .padding(.vertical, FocusPoolPresentation.subtaskRowVerticalPadding)
+        .frame(minHeight: FocusPoolPresentation.subtaskRowMinimumHeight)
         .overlay(
             RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
                 .stroke(
