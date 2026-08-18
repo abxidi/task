@@ -532,10 +532,17 @@ private struct FocusEntryRow: View {
                 Image(systemName: FocusPoolPresentation.checkboxSymbol(for: subtask))
                     .font(.system(size: 13))
                     .foregroundStyle(FocusPoolPresentation.checkboxColor(for: subtask))
-                    .frame(width: 18, height: 18)
+                    .frame(
+                        width: FocusPoolPresentation.subtaskIconFrameSize,
+                        height: FocusPoolPresentation.subtaskIconFrameSize
+                    )
             }
             .buttonStyle(.plain)
-            .frame(width: 24, height: 24, alignment: .topLeading)
+            .frame(
+                width: FocusPoolPresentation.subtaskIconFrameSize,
+                height: FocusPoolPresentation.subtaskIconFrameSize,
+                alignment: .topLeading
+            )
             .contentShape(Rectangle())
             .help(FocusPoolPresentation.completionActionTitle(for: subtask))
             .accessibilityLabel(FocusPoolPresentation.completionAccessibilityLabel(for: subtask))
@@ -558,6 +565,9 @@ private struct FocusEntryRow: View {
                 .help("拖动排序")
                 .accessibilityLabel("拖动排序")
         }
+        .padding(.horizontal, FocusPoolPresentation.subtaskRowHorizontalPadding)
+        .padding(.vertical, FocusPoolPresentation.subtaskRowVerticalPadding)
+        .frame(minHeight: FocusPoolPresentation.subtaskRowMinimumHeight)
         .opacity(FocusPoolPresentation.subtaskRowOpacity(for: subtask, draggingID: reorderCoordinator.sourceID))
         .background {
             GeometryReader { proxy in
@@ -745,7 +755,7 @@ private struct FocusSubtaskTitleEditor: View {
     var body: some View {
         TextField("子任务", text: $title, axis: .vertical)
             .textFieldStyle(.plain)
-            .font(.system(size: 12))
+            .font(.system(size: FocusPoolPresentation.subtaskTitleFontSize))
             .foregroundStyle(isCompleted ? TaskDesignTokens.quiet : TaskDesignTokens.muted)
             .strikethrough(isCompleted)
             .lineLimit(1...)
