@@ -141,23 +141,4 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.title), ["未完成", "已完成", "新增子任务"])
         XCTAssertEqual(ordered.map(\.isCompleted), [false, true, false])
     }
-
-    func testAddingSubtaskAtTheBeginningRenumbersExistingItems() throws {
-        let container = try ModelContainerFactory.make(inMemory: true)
-        let repository = TaskRepository(context: container.mainContext)
-        let item = try repository.saveNewTask(
-            TaskDraft(
-                title: "正在做",
-                subtasks: ["未完成", "已完成"],
-                subtaskCompletion: [false, true]
-            )
-        )
-
-        _ = try repository.insertSubtaskAtBeginning(to: item, title: "优先处理")
-
-        let ordered = item.subtasks.sorted { $0.order < $1.order }
-        XCTAssertEqual(ordered.map(\.title), ["优先处理", "未完成", "已完成"])
-        XCTAssertEqual(ordered.map(\.order), [0, 1, 2])
-        XCTAssertEqual(ordered.map(\.isCompleted), [false, false, true])
-    }
 }

@@ -79,25 +79,6 @@ public final class TaskRepository {
         return subtask
     }
 
-    @discardableResult
-    public func insertSubtaskAtBeginning(to item: TaskItem, title: String) throws -> Subtask {
-        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedTitle.isEmpty else { throw TaskRepositoryError.emptySubtaskTitle }
-
-        let ordered = item.subtasks.sorted { $0.order < $1.order }
-        let subtask = Subtask(title: trimmedTitle, order: 0)
-        for (index, existing) in ordered.enumerated() {
-            existing.order = index + 1
-        }
-
-        subtask.task = item
-        item.subtasks = [subtask] + ordered
-        item.updatedAt = .now
-        context.insert(subtask)
-        try context.save()
-        return subtask
-    }
-
     public func updatePriority(_ item: TaskItem, urgency: Int, importance: Int) throws {
         let coordinate = try PriorityCoordinate(urgency: urgency, importance: importance)
         item.urgency = coordinate.urgency
