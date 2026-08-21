@@ -98,6 +98,10 @@ enum FocusPoolPresentation {
     static let subtasksShowInsertionIndicator = true
     static let subtaskTitlesUseMultilineField = true
     static let subtaskTitleMaximumLineCount: Int? = nil
+    static let hasTopSubtaskEntry = true
+    static let hasBottomSubtaskEntry = true
+    static let topSubtaskEntryAccessibilityLabel = "从上方添加子任务"
+    static let bottomSubtaskEntryAccessibilityLabel = "从下方添加子任务"
     static let showsStatusSymbol = false
 
     static func markerStyle(isSelected: Bool) -> FocusStateMarkerStyle {
@@ -395,7 +399,8 @@ private struct FocusEntryRow: View {
     let onRemove: () -> Void
     @State private var state: TaskFocusState
     @State private var note: String
-    @State private var newSubtaskTitle = ""
+    @State private var topSubtaskTitle = ""
+    @State private var bottomSubtaskTitle = ""
     @StateObject private var reorderCoordinator = SubtaskReorderCoordinator()
     @State private var subtaskFrames: [UUID: CGRect] = [:]
     @State private var errorMessage: String?
@@ -502,6 +507,14 @@ private struct FocusEntryRow: View {
                 Spacer(minLength: 0)
             }
 
+            if entry.task != nil, FocusPoolPresentation.hasTopSubtaskEntry {
+                subtaskInput(
+                    text: $topSubtaskTitle,
+                    accessibilityLabel: FocusPoolPresentation.topSubtaskEntryAccessibilityLabel,
+                    onSubmit: { addSubtask(atBeginning: true) }
+                )
+            }
+
             if subtasks.isEmpty {
                 Text("暂无子任务")
                     .font(.system(size: 11))
@@ -512,8 +525,12 @@ private struct FocusEntryRow: View {
                 }
             }
 
-            if entry.task != nil {
-                addSubtaskInput
+            if entry.task != nil, FocusPoolPresentation.hasBottomSubtaskEntry {
+                subtaskInput(
+                    text: $bottomSubtaskTitle,
+                    accessibilityLabel: FocusPoolPresentation.bottomSubtaskEntryAccessibilityLabel,
+                    onSubmit: { addSubtask(atBeginning: false) }
+                )
             }
         }
         .frame(minWidth: FocusPoolPresentation.subtaskColumnMinWidth, maxWidth: .infinity, alignment: .leading)
@@ -575,24 +592,28 @@ private struct FocusEntryRow: View {
         }
     }
 
-    private var addSubtaskInput: some View {
+    private func subtaskInput(
+        text: Binding<String>,
+        accessibilityLabel: String,
+        onSubmit: @escaping () -> Void
+    ) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "plus")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(TaskDesignTokens.quiet)
                 .frame(width: 18, height: 18)
 
-            TextField("添加子任务", text: $newSubtaskTitle)
+            TextField("添加子任务", text: text)
                 .textFieldStyle(.plain)
                 .font(.system(size: FocusPoolPresentation.subtaskTitleFontSize))
                 .foregroundStyle(TaskDesignTokens.muted)
-                .onSubmit(addSubtask)
+                .onSubmit(onSubmit)
                 .onKeyPress(.return, phases: .down) { press in
                     guard press.modifiers.contains(.command) else { return .ignored }
-                    addSubtask()
+                    onSubmit()
                     return .handled
                 }
-                .accessibilityLabel("添加子任务")
+                .accessibilityLabel(accessibilityLabel)
                 .accessibilityHint("按 Return 创建子任务")
         }
         .padding(.horizontal, 10)
@@ -629,14 +650,20 @@ private struct FocusEntryRow: View {
         try TaskRepository(context: modelContext).updateSubtaskTitle(subtask, title: title)
     }
 
-    private func addSubtask() {
+    private func addSubtask(atBeginning: Bool) {
         guard let task = entry.task else { return }
-        let title = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = (atBeginning ? topSubtaskTitle : bottomSubtaskTitle)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
 
         do {
-            _ = try TaskRepository(context: modelContext).addSubtask(to: task, title: title)
-            newSubtaskTitle = ""
+            if atBeginning {
+                _ = try TaskRepository(context: modelContext).insertSubtaskAtBeginning(to: task, title: title)
+                topSubtaskTitle = ""
+            } else {
+                _ = try TaskRepository(context: modelContext).addSubtask(to: task, title: title)
+                bottomSubtaskTitle = ""
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

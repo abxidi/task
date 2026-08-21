@@ -88,6 +88,13 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertEqual(FocusPoolPresentation.subtaskTitleFontSize, 12)
     }
 
+    func testFocusPoolProvidesDistinctSubtaskCreationEntrances() {
+        XCTAssertTrue(FocusPoolPresentation.hasTopSubtaskEntry)
+        XCTAssertTrue(FocusPoolPresentation.hasBottomSubtaskEntry)
+        XCTAssertEqual(FocusPoolPresentation.topSubtaskEntryAccessibilityLabel, "从上方添加子任务")
+        XCTAssertEqual(FocusPoolPresentation.bottomSubtaskEntryAccessibilityLabel, "从下方添加子任务")
+    }
+
     func testFocusStatusControlUsesCompactSegmentedRailWithSeparateMarkers() {
         XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
         XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)
