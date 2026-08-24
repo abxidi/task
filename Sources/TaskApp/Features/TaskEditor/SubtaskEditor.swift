@@ -29,7 +29,7 @@ struct SubtaskEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if TaskEditorSubtaskEntryStyle.hasTopEntry {
+            if TaskEditorSubtaskEntryStyle.showsTopEntry(forSubtaskCount: ids.count) {
                 compactInputRow(
                     text: $topEntryTitle,
                     isFocused: $isTopEntryFocused,
@@ -40,8 +40,6 @@ struct SubtaskEditor: View {
 
             if !ids.isEmpty {
                 Divider()
-            } else if TaskEditorSubtaskEntryStyle.hasTopEntry, TaskEditorSubtaskEntryStyle.hasBottomEntry {
-                Divider()
             }
 
             ForEach(Array(ids.enumerated()), id: \.element) { index, id in
@@ -51,15 +49,15 @@ struct SubtaskEditor: View {
                 }
             }
 
-            if !ids.isEmpty, TaskEditorSubtaskEntryStyle.hasBottomEntry {
+            if !ids.isEmpty, TaskEditorSubtaskEntryStyle.showsBottomEntry(forSubtaskCount: ids.count) {
                 Divider()
             }
 
-            if TaskEditorSubtaskEntryStyle.hasBottomEntry {
+            if TaskEditorSubtaskEntryStyle.showsBottomEntry(forSubtaskCount: ids.count) {
                 compactInputRow(
                     text: $bottomEntryTitle,
                     isFocused: $isBottomEntryFocused,
-                    accessibilityLabel: TaskEditorSubtaskEntryStyle.bottomEntryAccessibilityLabel,
+                    accessibilityLabel: TaskEditorSubtaskEntryStyle.bottomEntryAccessibilityLabel(forSubtaskCount: ids.count),
                     insertsAtBeginning: false
                 )
             }
@@ -348,10 +346,27 @@ struct SubtaskEditor: View {
 enum TaskEditorSubtaskEntryStyle {
     static let usesSharedListRows = false
     static let startsAsInput = true
-    static let hasTopEntry = true
-    static let hasBottomEntry = true
+
+    static func entryCount(forSubtaskCount count: Int) -> Int {
+        showsTopEntry(forSubtaskCount: count) ? 2 : 1
+    }
+
+    static func showsTopEntry(forSubtaskCount count: Int) -> Bool {
+        count > 0
+    }
+
+    static func showsBottomEntry(forSubtaskCount _: Int) -> Bool {
+        true
+    }
+
     static let topEntryAccessibilityLabel = "从上方添加子任务"
     static let bottomEntryAccessibilityLabel = "从下方添加子任务"
+    static let emptyEntryAccessibilityLabel = "添加子任务"
+
+    static func bottomEntryAccessibilityLabel(forSubtaskCount count: Int) -> String {
+        count == 0 ? emptyEntryAccessibilityLabel : bottomEntryAccessibilityLabel
+    }
+
     static let iconSize: CGFloat = 12
     static let iconFrameSize: CGFloat = 18
     static let minimumHeight: CGFloat = 40

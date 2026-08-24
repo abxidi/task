@@ -33,10 +33,29 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
     }
 
     func testTaskEditorProvidesTopAndBottomSubtaskEntryPoints() {
-        XCTAssertTrue(TaskEditorSubtaskEntryStyle.hasTopEntry)
-        XCTAssertTrue(TaskEditorSubtaskEntryStyle.hasBottomEntry)
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.showsTopEntry(forSubtaskCount: 1))
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.showsBottomEntry(forSubtaskCount: 1))
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.topEntryAccessibilityLabel, "从上方添加子任务")
-        XCTAssertEqual(TaskEditorSubtaskEntryStyle.bottomEntryAccessibilityLabel, "从下方添加子任务")
+        XCTAssertEqual(
+            TaskEditorSubtaskEntryStyle.bottomEntryAccessibilityLabel(forSubtaskCount: 1),
+            "从下方添加子任务"
+        )
+    }
+
+    func testTaskEditorShowsOneEntryWhenThereAreNoSubtasks() {
+        XCTAssertEqual(TaskEditorSubtaskEntryStyle.entryCount(forSubtaskCount: 0), 1)
+        XCTAssertFalse(TaskEditorSubtaskEntryStyle.showsTopEntry(forSubtaskCount: 0))
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.showsBottomEntry(forSubtaskCount: 0))
+        XCTAssertEqual(
+            TaskEditorSubtaskEntryStyle.bottomEntryAccessibilityLabel(forSubtaskCount: 0),
+            "添加子任务"
+        )
+    }
+
+    func testTaskEditorShowsTwoEntriesWhenSubtasksExist() {
+        XCTAssertEqual(TaskEditorSubtaskEntryStyle.entryCount(forSubtaskCount: 1), 2)
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.showsTopEntry(forSubtaskCount: 1))
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.showsBottomEntry(forSubtaskCount: 1))
     }
 
     func testTaskListSubtaskTitlesUseUnboundedMultilineText() {

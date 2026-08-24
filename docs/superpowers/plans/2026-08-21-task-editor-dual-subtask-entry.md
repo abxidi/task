@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在任务编辑器子任务列表的上下两端提供输入入口，上方首位插入、下方保持追加。
+**Goal:** 在任务编辑器子任务列表的上下两端提供输入入口；空列表只显示一个追加入口，有子任务时上方首位插入、下方保持追加。
 
 **Architecture:** `TaskDraft` 负责维护子任务及其 ID、完成状态的并行数组；`SubtaskEditor` 为每个视觉入口维护独立草稿文本，通过布尔插入意图调用现有自动保存链路。无需改动 SwiftData 或仓储层。
 
@@ -54,6 +54,6 @@
 
 说明上下两个输入入口、上方首位插入和下方追加的语义。
 
-- [ ] **Step 2: 运行质量门槛并提交**
+- [x] **Step 2: 运行质量门槛并提交**
 
 运行 `swift test`、`swift build -c release`、`./scripts/package_app.sh`、`codesign --verify --deep --strict dist/Task.app`、旧优先级范围扫描和 `git diff --check`。仅暂存本计划列出的文件，使用提交信息 `feat: add task editor subtask entry at top`。
