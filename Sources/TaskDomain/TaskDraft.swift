@@ -97,6 +97,13 @@ public struct TaskDraft: Equatable, Sendable {
         subtaskIDs.insert(UUID(), at: insertionIndex)
     }
 
+    public mutating func insertSubtaskAtBeginning(_ title: String) {
+        normalizeSubtaskOrdering()
+        subtasks.insert(title, at: 0)
+        subtaskCompletion.insert(false, at: 0)
+        subtaskIDs.insert(UUID(), at: 0)
+    }
+
     public mutating func normalizeSubtaskOrdering() {
         subtaskIDs = Self.alignedSubtaskIDs(subtaskIDs, count: subtasks.count)
         subtaskCompletion = Array(subtaskCompletion.prefix(subtasks.count))

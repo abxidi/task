@@ -10,23 +10,40 @@ struct SubtaskEditor: View {
     let onToggle: (Int) -> Void
     let onMove: (IndexSet, Int) -> Void
     let onDelete: (Int) -> Void
-    let onAdd: (String) -> Void
+    let onAdd: (String, Bool) -> Void
     let canAttachImages: Bool
     let attachments: (UUID) -> [SubtaskAttachment]
     let onPasteImage: (UUID, NSImage) throws -> Void
     let onDeleteAttachment: (SubtaskAttachment) throws -> Void
     let onPreview: (SubtaskImagePreview) -> Void
 
-    @State private var newTitle = ""
+    @State private var topEntryTitle = ""
+    @State private var bottomEntryTitle = ""
     @State private var attachmentRevision = 0
     @State private var attachmentPopoverSubtaskID: UUID?
     @State private var attachmentError: String?
     @StateObject private var reorderCoordinator = SubtaskReorderCoordinator()
     @State private var subtaskFrames: [UUID: CGRect] = [:]
-    @FocusState private var isNewFocused: Bool
+    @FocusState private var isTopEntryFocused: Bool
+    @FocusState private var isBottomEntryFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if TaskEditorSubtaskEntryStyle.hasTopEntry {
+                compactInputRow(
+                    text: $topEntryTitle,
+                    isFocused: $isTopEntryFocused,
+                    accessibilityLabel: TaskEditorSubtaskEntryStyle.topEntryAccessibilityLabel,
+                    insertsAtBeginning: true
+                )
+            }
+
+            if !ids.isEmpty {
+                Divider()
+            } else if TaskEditorSubtaskEntryStyle.hasTopEntry, TaskEditorSubtaskEntryStyle.hasBottomEntry {
+                Divider()
+            }
+
             ForEach(Array(ids.enumerated()), id: \.element) { index, id in
                 subtaskRow(index: index, id: id)
                 if index < ids.count - 1 {
@@ -34,11 +51,18 @@ struct SubtaskEditor: View {
                 }
             }
 
-            if !ids.isEmpty {
+            if !ids.isEmpty, TaskEditorSubtaskEntryStyle.hasBottomEntry {
                 Divider()
             }
 
-            compactInputRow
+            if TaskEditorSubtaskEntryStyle.hasBottomEntry {
+                compactInputRow(
+                    text: $bottomEntryTitle,
+                    isFocused: $isBottomEntryFocused,
+                    accessibilityLabel: TaskEditorSubtaskEntryStyle.bottomEntryAccessibilityLabel,
+                    insertsAtBeginning: false
+                )
+            }
         }
         .overlay(
             RoundedRectangle(cornerRadius: 6)
@@ -235,30 +259,45 @@ struct SubtaskEditor: View {
         onMove(IndexSet(integer: sourceIndex), destinationIndex + destinationOffset)
     }
 
-    private var compactInputRow: some View {
+    private func compactInputRow(
+        text: Binding<String>,
+        isFocused: FocusState<Bool>.Binding,
+        accessibilityLabel: String,
+        insertsAtBeginning: Bool
+    ) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "plus")
                 .font(.system(size: TaskEditorSubtaskEntryStyle.iconSize, weight: .semibold))
                 .foregroundStyle(TaskDesignTokens.quiet)
                 .frame(width: TaskEditorSubtaskEntryStyle.iconFrameSize, height: TaskEditorSubtaskEntryStyle.iconFrameSize)
             ZStack(alignment: .leading) {
-                if TaskEditorPlaceholder.isVisible(text: newTitle, isFocused: isNewFocused) {
+                if TaskEditorPlaceholder.isVisible(text: text.wrappedValue, isFocused: isFocused.wrappedValue) {
                     Text("添加一个子任务")
                         .font(.system(size: 12))
                         .foregroundStyle(TaskDesignTokens.quiet.opacity(TaskEditorPlaceholder.opacity))
                         .allowsHitTesting(false)
                 }
-                TextField("", text: $newTitle)
+                TextField("", text: text)
                     .textFieldStyle(.plain)
                     .font(.system(size: 12))
-                    .focused($isNewFocused)
-                    .onSubmit(addNew)
+                    .focused(isFocused)
+                    .onSubmit {
+                        addNew(
+                            text: text,
+                            isFocused: isFocused,
+                            insertsAtBeginning: insertsAtBeginning
+                        )
+                    }
                     .onKeyPress(.return, phases: .down) { press in
                         guard press.modifiers.contains(.command) else { return .ignored }
-                        addNew()
+                        addNew(
+                            text: text,
+                            isFocused: isFocused,
+                            insertsAtBeginning: insertsAtBeginning
+                        )
                         return .handled
                     }
-                    .accessibilityLabel("添加子任务")
+                    .accessibilityLabel(accessibilityLabel)
             }
         }
         .padding(.horizontal, 10)
@@ -290,21 +329,29 @@ struct SubtaskEditor: View {
         }
     }
 
-    private func addNew() {
-        let trimmed = newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func addNew(
+        text: Binding<String>,
+        isFocused: FocusState<Bool>.Binding,
+        insertsAtBeginning: Bool
+    ) {
+        let trimmed = text.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            isNewFocused = false
+            isFocused.wrappedValue = false
             return
         }
-        onAdd(trimmed)
-        newTitle = ""
-        isNewFocused = true
+        onAdd(trimmed, insertsAtBeginning)
+        text.wrappedValue = ""
+        isFocused.wrappedValue = true
     }
 }
 
 enum TaskEditorSubtaskEntryStyle {
     static let usesSharedListRows = false
     static let startsAsInput = true
+    static let hasTopEntry = true
+    static let hasBottomEntry = true
+    static let topEntryAccessibilityLabel = "从上方添加子任务"
+    static let bottomEntryAccessibilityLabel = "从下方添加子任务"
     static let iconSize: CGFloat = 12
     static let iconFrameSize: CGFloat = 18
     static let minimumHeight: CGFloat = 40

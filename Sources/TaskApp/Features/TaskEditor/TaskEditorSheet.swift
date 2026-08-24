@@ -181,7 +181,13 @@ struct TaskEditorSheet: View {
             onToggle: { model.draft.toggleSubtaskCompletion(at: $0) },
             onMove: moveSubtasks,
             onDelete: removeSubtask,
-            onAdd: { model.draft.addSubtask($0) },
+            onAdd: { title, insertsAtBeginning in
+                if insertsAtBeginning {
+                    model.draft.insertSubtaskAtBeginning(title)
+                } else {
+                    model.draft.addSubtask(title)
+                }
+            },
             canAttachImages: SubtaskAttachmentInput.isAvailable(forTaskTitle: model.draft.title),
             attachments: attachments(for:),
             onPasteImage: { subtaskID, image in

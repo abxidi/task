@@ -32,6 +32,13 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.minimumHeight, 40)
     }
 
+    func testTaskEditorProvidesTopAndBottomSubtaskEntryPoints() {
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.hasTopEntry)
+        XCTAssertTrue(TaskEditorSubtaskEntryStyle.hasBottomEntry)
+        XCTAssertEqual(TaskEditorSubtaskEntryStyle.topEntryAccessibilityLabel, "从上方添加子任务")
+        XCTAssertEqual(TaskEditorSubtaskEntryStyle.bottomEntryAccessibilityLabel, "从下方添加子任务")
+    }
+
     func testTaskListSubtaskTitlesUseUnboundedMultilineText() {
         XCTAssertTrue(TaskEditorSubtaskEntryStyle.subtaskTitlesUseMultilineField)
         XCTAssertNil(TaskEditorSubtaskEntryStyle.subtaskTitleMaximumLineCount)

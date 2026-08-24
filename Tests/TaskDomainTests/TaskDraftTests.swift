@@ -71,6 +71,24 @@ final class TaskDraftTests: XCTestCase {
         XCTAssertEqual(draft.subtaskCompletion, [false, false, true])
     }
 
+    func testInsertingSubtaskAtBeginningPlacesItBeforeIncompleteItemsAndKeepsIdentityAligned() {
+        let firstID = UUID()
+        let completedID = UUID()
+        var draft = TaskDraft(
+            title: "Plan",
+            subtasks: ["待办", "已完成"],
+            subtaskCompletion: [false, true],
+            subtaskIDs: [firstID, completedID]
+        )
+
+        draft.insertSubtaskAtBeginning("优先处理")
+
+        XCTAssertEqual(draft.subtasks, ["优先处理", "待办", "已完成"])
+        XCTAssertEqual(draft.subtaskCompletion, [false, false, true])
+        XCTAssertEqual(draft.subtaskIDs.dropFirst(), [firstID, completedID])
+        XCTAssertNotEqual(draft.subtaskIDs.first, firstID)
+    }
+
     func testSubtaskIdentityMovesWithTheSubtask() {
         let firstID = UUID()
         let secondID = UUID()
