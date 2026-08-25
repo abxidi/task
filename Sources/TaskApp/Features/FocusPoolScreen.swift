@@ -59,6 +59,11 @@ struct FocusSubtaskItem: Identifiable, Equatable {
     let isCompleted: Bool
 }
 
+struct FocusCardColumnWidths: Equatable {
+    let left: CGFloat
+    let right: CGFloat
+}
+
 enum FocusSubtaskCompletionSource {
     case checkbox
     case title
@@ -71,7 +76,15 @@ enum FocusPoolPresentation {
     static let taskTitleFontSize: CGFloat = 11
     static let usesTwoColumnCard = true
     static let cardColumnSpacing: CGFloat = 20
+    static let dividerWidth: CGFloat = 1
+    static let leftColumnRatio: CGFloat = 0.46
+    static let rightColumnRatio: CGFloat = 0.54
+    static let leftColumnMinWidth: CGFloat = 276
     static let subtaskColumnMinWidth: CGFloat = 280
+    static let minimumTwoColumnWidth = max(
+        leftColumnMinWidth / leftColumnRatio,
+        subtaskColumnMinWidth / rightColumnRatio
+    ) + cardColumnSpacing * 2 + dividerWidth
     static let subtaskTitleFontSize: CGFloat = 12
     static let statusControlWidth: CGFloat = 240
     static let statusControlHeight: CGFloat = 32
@@ -102,6 +115,19 @@ enum FocusPoolPresentation {
 
     static func markerStyle(isSelected: Bool) -> FocusStateMarkerStyle {
         isSelected ? .filled : .hollow
+    }
+
+    static func columnWidths(for availableWidth: CGFloat) -> FocusCardColumnWidths? {
+        guard usesTwoColumnLayout(for: availableWidth) else { return nil }
+        let columnsWidth = availableWidth - cardColumnSpacing * 2 - dividerWidth
+        return FocusCardColumnWidths(
+            left: columnsWidth * leftColumnRatio,
+            right: columnsWidth * rightColumnRatio
+        )
+    }
+
+    static func usesTwoColumnLayout(for availableWidth: CGFloat) -> Bool {
+        availableWidth.isFinite && availableWidth >= minimumTwoColumnWidth
     }
 
     static func canAddTask(isCompleted: Bool, hasFocusEntry: Bool) -> Bool {
@@ -256,6 +282,112 @@ private struct FocusStateSegmentedControl: View {
     }
 }
 
+private struct FocusEntryColumnsLayout: Layout {
+    let spacing: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        precondition(subviews.count == 3, "Focus entry layout requires left column, divider, and subtask column")
+
+        let availableWidth = resolvedWidth(for: proposal, subviews: subviews)
+        if let widths = FocusPoolPresentation.columnWidths(for: availableWidth) {
+            let leftSize = subviews[0].sizeThatFits(.init(width: widths.left, height: nil))
+            let dividerSize = subviews[1].sizeThatFits(.init(width: FocusPoolPresentation.dividerWidth, height: nil))
+            let rightSize = subviews[2].sizeThatFits(.init(width: widths.right, height: nil))
+
+            return CGSize(
+                width: availableWidth,
+                height: max(leftSize.height, dividerSize.height, rightSize.height)
+            )
+        }
+
+        let leftSize = subviews[0].sizeThatFits(.init(width: availableWidth, height: nil))
+        let rightSize = subviews[2].sizeThatFits(.init(width: availableWidth, height: nil))
+        return CGSize(
+            width: availableWidth,
+            height: leftSize.height + spacing + rightSize.height
+        )
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        precondition(subviews.count == 3, "Focus entry layout requires left column, divider, and subtask column")
+
+        let availableWidth: CGFloat
+        if bounds.width.isFinite, bounds.width > 0 {
+            availableWidth = bounds.width
+        } else {
+            availableWidth = resolvedWidth(for: proposal, subviews: subviews)
+        }
+        if let widths = FocusPoolPresentation.columnWidths(for: availableWidth) {
+            subviews[0].place(
+                at: bounds.origin,
+                anchor: .topLeading,
+                proposal: .init(width: widths.left, height: nil)
+            )
+            subviews[1].place(
+                at: CGPoint(x: bounds.minX + widths.left + spacing, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: .init(width: FocusPoolPresentation.dividerWidth, height: bounds.height)
+            )
+            subviews[2].place(
+                at: CGPoint(
+                    x: bounds.minX + widths.left + spacing + FocusPoolPresentation.dividerWidth + spacing,
+                    y: bounds.minY
+                ),
+                anchor: .topLeading,
+                proposal: .init(width: widths.right, height: nil)
+            )
+            return
+        }
+
+        let leftSize = subviews[0].sizeThatFits(.init(width: availableWidth, height: nil))
+        subviews[0].place(
+            at: bounds.origin,
+            anchor: .topLeading,
+            proposal: .init(width: availableWidth, height: nil)
+        )
+        subviews[1].place(
+            at: CGPoint(x: bounds.maxX + 10_000, y: bounds.minY),
+            anchor: .topLeading,
+            proposal: .zero
+        )
+        subviews[2].place(
+            at: CGPoint(x: bounds.minX, y: bounds.minY + leftSize.height + spacing),
+            anchor: .topLeading,
+            proposal: .init(width: availableWidth, height: nil)
+        )
+    }
+
+    private func resolvedWidth(
+        for proposal: ProposedViewSize,
+        subviews: Subviews,
+        fallbackWidth: CGFloat? = nil
+    ) -> CGFloat {
+        let proposedWidth = proposal.width
+        if let proposedWidth, proposedWidth.isFinite, proposedWidth > 0 {
+            return proposedWidth
+        }
+        if let fallbackWidth, fallbackWidth.isFinite, fallbackWidth > 0 {
+            return fallbackWidth
+        }
+        return max(FocusPoolPresentation.minimumTwoColumnWidth, idealWidth(for: subviews))
+    }
+
+    private func idealWidth(for subviews: Subviews) -> CGFloat {
+        subviews.reduce(CGFloat.zero) { partialWidth, subview in
+            partialWidth + subview.sizeThatFits(.unspecified).width
+        } + spacing * 2
+    }
+}
+
 struct FocusPoolScreen: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \TaskItem.updatedAt, order: .reverse) private var tasks: [TaskItem]
@@ -285,6 +417,7 @@ struct FocusPoolScreen: View {
                             )
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 26)
                     .padding(.bottom, 24)
                 }
@@ -408,14 +541,15 @@ private struct FocusEntryRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: FocusPoolPresentation.cardColumnSpacing) {
+        FocusEntryColumnsLayout(spacing: FocusPoolPresentation.cardColumnSpacing) {
             leftColumn
 
             Divider()
-                .frame(minHeight: 132)
+                .frame(width: FocusPoolPresentation.dividerWidth)
 
             subtasksColumn
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
         .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: TaskDesignTokens.panelRadius))
         .overlay(

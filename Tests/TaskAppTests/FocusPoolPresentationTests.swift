@@ -125,6 +125,42 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertTrue(FocusPoolPresentation.subtasksSupportReordering)
     }
 
+    func testFocusCardColumnsUseTheApproved46To54Ratio() throws {
+        let widths = try XCTUnwrap(FocusPoolPresentation.columnWidths(for: 1_001))
+
+        XCTAssertEqual(FocusPoolPresentation.leftColumnRatio, 0.46, accuracy: 0.000_1)
+        XCTAssertEqual(FocusPoolPresentation.rightColumnRatio, 0.54, accuracy: 0.000_1)
+        XCTAssertEqual(widths.left, 441.6, accuracy: 0.000_1)
+        XCTAssertEqual(widths.right, 518.4, accuracy: 0.000_1)
+    }
+
+    func testFocusCardColumnsPreserveTheSubtaskMinimumWidthAtTheNarrowestTwoColumnWidth() throws {
+        let widths = try XCTUnwrap(
+            FocusPoolPresentation.columnWidths(for: FocusPoolPresentation.minimumTwoColumnWidth)
+        )
+
+        XCTAssertEqual(widths.left, FocusPoolPresentation.leftColumnMinWidth, accuracy: 0.000_1)
+        XCTAssertGreaterThanOrEqual(widths.right, FocusPoolPresentation.subtaskColumnMinWidth)
+    }
+
+    func testFocusCardColumnWidthsRemainUnsetUntilTheCardHasFiniteWidth() {
+        XCTAssertNil(FocusPoolPresentation.columnWidths(for: 0))
+        XCTAssertNil(FocusPoolPresentation.columnWidths(for: .infinity))
+    }
+
+    func testFocusCardStacksColumnsBelowTheMinimumTwoColumnWidth() {
+        XCTAssertFalse(
+            FocusPoolPresentation.usesTwoColumnLayout(
+                for: FocusPoolPresentation.minimumTwoColumnWidth - 1
+            )
+        )
+        XCTAssertNil(
+            FocusPoolPresentation.columnWidths(
+                for: FocusPoolPresentation.minimumTwoColumnWidth - 1
+            )
+        )
+    }
+
     func testFocusSubtaskReorderingUsesSystemBlueInsertionIndicator() {
         XCTAssertTrue(FocusPoolPresentation.subtasksShowInsertionIndicator)
         XCTAssertEqual(SubtaskReorderPresentation.insertionIndicatorHeight, 2)
