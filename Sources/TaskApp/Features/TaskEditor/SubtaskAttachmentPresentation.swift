@@ -2,8 +2,11 @@ import Foundation
 
 enum SubtaskAttachmentLayout {
     static let usesCompactCountButton = true
+    static let usesRoundedSquareCountBadge = true
     static let usesAttachmentPopover = true
     static let usesInlineThumbnailStrip = false
+    static let countBadgeSize: CGFloat = 18
+    static let countBadgeCornerRadius: CGFloat = 4
     static let gridColumnCount = 3
     static let maximumVisibleRows = 2
     static let thumbnailWidth: CGFloat = 72

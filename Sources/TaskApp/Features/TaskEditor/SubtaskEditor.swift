@@ -166,7 +166,19 @@ struct SubtaskEditor: View {
                     .font(.system(size: 11, weight: .medium))
                 if !values.isEmpty {
                     Text("\(values.count)")
-                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                        .font(.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit())
+                        .frame(
+                            width: SubtaskAttachmentLayout.countBadgeSize,
+                            height: SubtaskAttachmentLayout.countBadgeSize
+                        )
+                        .background(
+                            TaskDesignTokens.raised,
+                            in: RoundedRectangle(cornerRadius: SubtaskAttachmentLayout.countBadgeCornerRadius)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: SubtaskAttachmentLayout.countBadgeCornerRadius)
+                                .stroke(TaskDesignTokens.lineStrong, lineWidth: 1)
+                        )
                 }
             }
             .foregroundStyle(TaskDesignTokens.muted)

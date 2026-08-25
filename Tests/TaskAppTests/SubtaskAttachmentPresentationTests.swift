@@ -2,6 +2,24 @@ import XCTest
 @testable import TaskApp
 
 final class SubtaskAttachmentPresentationTests: XCTestCase {
+    func testAttachmentCountUsesRoundedSquareBadge() {
+        XCTAssertTrue(SubtaskAttachmentLayout.usesRoundedSquareCountBadge)
+        XCTAssertEqual(SubtaskAttachmentLayout.countBadgeSize, 18)
+        XCTAssertEqual(SubtaskAttachmentLayout.countBadgeCornerRadius, 4)
+    }
+
+    func testAttachmentCountBadgeIsRenderedByTheSubtaskEditor() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let editorURL = workspaceURL.appending(path: "Sources/TaskApp/Features/TaskEditor/SubtaskEditor.swift")
+        let source = try String(contentsOf: editorURL)
+
+        XCTAssertTrue(source.contains("SubtaskAttachmentLayout.countBadgeSize"))
+        XCTAssertTrue(source.contains("RoundedRectangle(cornerRadius: SubtaskAttachmentLayout.countBadgeCornerRadius)"))
+    }
+
     func testSubtaskRowsUseCompactAttachmentCountAndPopoverGrid() {
         XCTAssertTrue(SubtaskAttachmentLayout.usesCompactCountButton)
         XCTAssertTrue(SubtaskAttachmentLayout.usesAttachmentPopover)
