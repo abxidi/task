@@ -19,6 +19,7 @@ public final class BoardWorkflowService {
             }
             task.isCompleted = true
             task.completedAt = now
+            removeFocusEntry(for: task, from: context)
         } else {
             task.isCompleted = false
             task.completedAt = nil

@@ -90,6 +90,9 @@ public final class TaskRepository {
     public func setCompleted(_ item: TaskItem, isCompleted: Bool) throws {
         item.isCompleted = isCompleted
         item.completedAt = isCompleted ? .now : nil
+        if isCompleted {
+            removeFocusEntry(for: item, from: context)
+        }
         if isCompleted, let project = item.project {
             if let completion = project.boardColumns.first(where: \.isCompletionColumn) {
                 if let current = item.boardColumn, !current.isCompletionColumn {
@@ -150,6 +153,9 @@ public final class TaskRepository {
         item.estimatedMinutes = draft.estimatedMinutes
         item.isCompleted = draft.isCompleted
         item.completedAt = draft.isCompleted ? (item.completedAt ?? .now) : nil
+        if draft.isCompleted {
+            removeFocusEntry(for: item, from: context)
+        }
 
         let requestedIDs = Set(draft.subtaskIDs)
         let existingByID = Dictionary(uniqueKeysWithValues: item.subtasks.map { ($0.id, $0) })

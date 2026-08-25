@@ -2,6 +2,12 @@ import Foundation
 import SwiftData
 import TaskDomain
 
+func removeFocusEntry(for task: TaskItem, from context: ModelContext) {
+    guard let entry = task.focusEntry else { return }
+    task.focusEntry = nil
+    context.delete(entry)
+}
+
 @MainActor
 public final class FocusRepository {
     private let context: ModelContext
