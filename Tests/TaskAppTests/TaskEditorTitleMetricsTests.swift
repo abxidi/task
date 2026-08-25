@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import XCTest
 @testable import TaskApp
 
@@ -30,6 +31,21 @@ final class TaskEditorTitleMetricsTests: XCTestCase {
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.iconSize, 12)
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.iconFrameSize, 18)
         XCTAssertEqual(TaskEditorSubtaskEntryStyle.minimumHeight, 40)
+    }
+
+    func testSubtaskRowContentIsVerticallyCentered() {
+        XCTAssertEqual(TaskEditorSubtaskEntryStyle.rowContentAlignment, .center)
+    }
+
+    func testSubtaskRowUsesTheCenteredAlignmentContract() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let editorURL = workspaceURL.appending(path: "Sources/TaskApp/Features/TaskEditor/SubtaskEditor.swift")
+        let source = try String(contentsOf: editorURL)
+
+        XCTAssertTrue(source.contains("HStack(alignment: TaskEditorSubtaskEntryStyle.rowContentAlignment, spacing: 8)"))
     }
 
     func testTaskEditorProvidesTopAndBottomSubtaskEntryPoints() {

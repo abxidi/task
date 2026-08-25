@@ -82,7 +82,7 @@ struct SubtaskEditor: View {
 
     private func subtaskRow(index: Int, id: UUID) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: TaskEditorSubtaskEntryStyle.rowContentAlignment, spacing: 8) {
                 Button {
                     onToggle(index)
                 } label: {
@@ -346,6 +346,7 @@ struct SubtaskEditor: View {
 enum TaskEditorSubtaskEntryStyle {
     static let usesSharedListRows = false
     static let startsAsInput = true
+    static let rowContentAlignment: VerticalAlignment = .center
 
     static func entryCount(forSubtaskCount count: Int) -> Int {
         showsTopEntry(forSubtaskCount: count) ? 2 : 1
