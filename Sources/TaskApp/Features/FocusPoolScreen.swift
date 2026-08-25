@@ -544,8 +544,10 @@ private struct FocusEntryRow: View {
         FocusEntryColumnsLayout(spacing: FocusPoolPresentation.cardColumnSpacing) {
             leftColumn
 
-            Divider()
+            Rectangle()
+                .fill(TaskDesignTokens.line)
                 .frame(width: FocusPoolPresentation.dividerWidth)
+                .accessibilityHidden(true)
 
             subtasksColumn
         }
