@@ -1,7 +1,7 @@
 import Foundation
 
 public struct BackupEnvelope: Codable, Equatable, Sendable {
-    public static let currentSchemaVersion = 2
+    public static let currentSchemaVersion = 3
 
     public let schemaVersion: Int
     public let exportedAt: Date
@@ -137,6 +137,31 @@ public struct BackupSubtask: Codable, Equatable, Sendable {
     public let isCompleted: Bool
     public let order: Int
     public let createdAt: Date
+    public let focusStateRawValue: String?
+    public let focusNote: String?
+    public let focusUpdatedAt: Date?
+
+    public init(
+        id: UUID,
+        taskID: UUID,
+        title: String,
+        isCompleted: Bool,
+        order: Int,
+        createdAt: Date,
+        focusStateRawValue: String? = nil,
+        focusNote: String? = nil,
+        focusUpdatedAt: Date? = nil
+    ) {
+        self.id = id
+        self.taskID = taskID
+        self.title = title
+        self.isCompleted = isCompleted
+        self.order = order
+        self.createdAt = createdAt
+        self.focusStateRawValue = focusStateRawValue
+        self.focusNote = focusNote
+        self.focusUpdatedAt = focusUpdatedAt
+    }
 }
 
 public struct BackupSubtaskAttachment: Codable, Equatable, Sendable {
@@ -150,10 +175,15 @@ public struct BackupSubtaskAttachment: Codable, Equatable, Sendable {
 public struct BackupFocusEntry: Codable, Equatable, Sendable {
     public let id: UUID
     public let taskID: UUID
-    public let stateRawValue: String
-    public let note: String
     public let createdAt: Date
     public let updatedAt: Date
+
+    public init(id: UUID, taskID: UUID, createdAt: Date, updatedAt: Date) {
+        self.id = id
+        self.taskID = taskID
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
 }
 
 public struct BackupTag: Codable, Equatable, Sendable {
