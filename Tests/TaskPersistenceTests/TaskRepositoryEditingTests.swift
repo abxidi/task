@@ -124,6 +124,20 @@ final class TaskRepositoryEditingTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.isCompleted), [true, false])
     }
 
+    func testCompletingSubtaskClearsItsFocusData() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let task = try TaskRepository(context: container.mainContext)
+            .saveNewTask(TaskDraft(title: "发布", subtasks: ["回归"]))
+        let subtask = try XCTUnwrap(task.subtasks.first)
+        try FocusRepository(context: container.mainContext).start(subtask)
+
+        try TaskRepository(context: container.mainContext).setSubtaskCompleted(subtask, isCompleted: true)
+
+        XCTAssertNil(subtask.focusState)
+        XCTAssertNil(subtask.focusNote)
+        XCTAssertNil(subtask.focusUpdatedAt)
+    }
+
     func testAddingSubtaskAppendsAfterTheLastExistingItem() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let repository = TaskRepository(context: container.mainContext)

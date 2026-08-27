@@ -40,6 +40,9 @@ public final class TaskRepository {
 
     public func setSubtaskCompleted(_ subtask: Subtask, isCompleted: Bool) throws {
         subtask.isCompleted = isCompleted
+        if isCompleted {
+            clearFocusData(for: subtask)
+        }
         if let task = subtask.task {
             task.updatedAt = .now
         }
@@ -91,6 +94,7 @@ public final class TaskRepository {
         item.isCompleted = isCompleted
         item.completedAt = isCompleted ? .now : nil
         if isCompleted {
+            item.subtasks.forEach(clearFocusData)
             removeFocusEntry(for: item, from: context)
         }
         if isCompleted, let project = item.project {
@@ -154,6 +158,7 @@ public final class TaskRepository {
         item.isCompleted = draft.isCompleted
         item.completedAt = draft.isCompleted ? (item.completedAt ?? .now) : nil
         if draft.isCompleted {
+            item.subtasks.forEach(clearFocusData)
             removeFocusEntry(for: item, from: context)
         }
 
