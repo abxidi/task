@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import XCTest
+import TaskDomain
 @testable import TaskPersistence
 
 @MainActor
