@@ -116,49 +116,47 @@ final class FocusPoolPresentationTests: XCTestCase {
         )
     }
 
-    func testFocusCardsUseTwoColumnsAndPlainNoteField() {
-        XCTAssertTrue(FocusPoolPresentation.usesTwoColumnCard)
-        XCTAssertEqual(FocusPoolPresentation.subtaskColumnMinWidth, 280)
-        XCTAssertTrue(FocusPoolPresentation.noteUsesPlainField)
-        XCTAssertTrue(FocusPoolPresentation.noteUsesMultilineEditor)
+    func testFocusCardsUseLinkedSubtaskRows() {
+        XCTAssertTrue(FocusPoolPresentation.usesLinkedSubtaskRows)
+        XCTAssertTrue(FocusPoolPresentation.linkedRowsShareVerticalAlignment)
+        XCTAssertTrue(FocusPoolPresentation.linkedRowsUseCenterConnectionMarker)
         XCTAssertTrue(FocusPoolPresentation.subtasksUseCheckboxes)
         XCTAssertTrue(FocusPoolPresentation.subtasksSupportReordering)
     }
 
-    func testFocusCardColumnsUseTheApproved46To54Ratio() throws {
-        let widths = try XCTUnwrap(FocusPoolPresentation.columnWidths(for: 1_001))
+    func testFocusSubtaskRowsUseEqualLinkedColumns() throws {
+        let widths = try XCTUnwrap(FocusPoolPresentation.linkedRowColumnWidths(for: 800))
 
-        XCTAssertEqual(FocusPoolPresentation.leftColumnRatio, 0.46, accuracy: 0.000_1)
-        XCTAssertEqual(FocusPoolPresentation.rightColumnRatio, 0.54, accuracy: 0.000_1)
-        XCTAssertEqual(widths.left, 441.6, accuracy: 0.000_1)
-        XCTAssertEqual(widths.right, 518.4, accuracy: 0.000_1)
+        XCTAssertEqual(FocusPoolPresentation.linkedRowLeftRatio, 0.5, accuracy: 0.000_1)
+        XCTAssertEqual(FocusPoolPresentation.linkedRowRightRatio, 0.5, accuracy: 0.000_1)
+        XCTAssertEqual(widths.left, widths.right, accuracy: 0.000_1)
+        XCTAssertEqual(FocusPoolPresentation.linkedRowDividerWidth, 1)
     }
 
-    func testFocusCardColumnsPreserveTheSubtaskMinimumWidthAtTheNarrowestTwoColumnWidth() throws {
+    func testFocusLinkedRowsStackBelowTheTwoColumnMinimumWidth() throws {
         let widths = try XCTUnwrap(
-            FocusPoolPresentation.columnWidths(for: FocusPoolPresentation.minimumTwoColumnWidth)
-        )
-
-        XCTAssertEqual(widths.left, FocusPoolPresentation.leftColumnMinWidth, accuracy: 0.000_1)
-        XCTAssertGreaterThanOrEqual(widths.right, FocusPoolPresentation.subtaskColumnMinWidth)
-    }
-
-    func testFocusCardColumnWidthsRemainUnsetUntilTheCardHasFiniteWidth() {
-        XCTAssertNil(FocusPoolPresentation.columnWidths(for: 0))
-        XCTAssertNil(FocusPoolPresentation.columnWidths(for: .infinity))
-    }
-
-    func testFocusCardStacksColumnsBelowTheMinimumTwoColumnWidth() {
-        XCTAssertFalse(
-            FocusPoolPresentation.usesTwoColumnLayout(
-                for: FocusPoolPresentation.minimumTwoColumnWidth - 1
+            FocusPoolPresentation.linkedRowColumnWidths(
+                for: FocusPoolPresentation.minimumLinkedRowWidth
             )
         )
+
+        XCTAssertEqual(widths.left, FocusPoolPresentation.linkedRowMinimumColumnWidth, accuracy: 0.000_1)
+        XCTAssertEqual(widths.right, FocusPoolPresentation.linkedRowMinimumColumnWidth, accuracy: 0.000_1)
         XCTAssertNil(
-            FocusPoolPresentation.columnWidths(
-                for: FocusPoolPresentation.minimumTwoColumnWidth - 1
+            FocusPoolPresentation.linkedRowColumnWidths(
+                for: FocusPoolPresentation.minimumLinkedRowWidth - 1
             )
         )
+    }
+
+    func testFocusSubtaskStatusIsHiddenUntilStarted() {
+        XCTAssertFalse(FocusPoolPresentation.showsSubtaskFocusDetails(state: nil))
+        XCTAssertTrue(FocusPoolPresentation.showsSubtaskFocusDetails(state: .focused))
+    }
+
+    func testFocusLinkedRowWidthsRemainUnsetUntilTheCardHasFiniteWidth() {
+        XCTAssertNil(FocusPoolPresentation.linkedRowColumnWidths(for: 0))
+        XCTAssertNil(FocusPoolPresentation.linkedRowColumnWidths(for: .infinity))
     }
 
     func testFocusSubtaskReorderingUsesSystemBlueInsertionIndicator() {

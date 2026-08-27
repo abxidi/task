@@ -57,6 +57,22 @@ struct FocusSubtaskItem: Identifiable, Equatable {
     let id: UUID
     let title: String
     let isCompleted: Bool
+    let focusState: TaskFocusState?
+    let focusNote: String?
+
+    init(
+        id: UUID,
+        title: String,
+        isCompleted: Bool,
+        focusState: TaskFocusState? = nil,
+        focusNote: String? = nil
+    ) {
+        self.id = id
+        self.title = title
+        self.isCompleted = isCompleted
+        self.focusState = focusState
+        self.focusNote = focusNote
+    }
 }
 
 struct FocusCardColumnWidths: Equatable {
@@ -74,17 +90,6 @@ enum FocusPoolPresentation {
     static let pageTitleFontSize: CGFloat = 26
     static let actionFontSize: CGFloat = 11
     static let taskTitleFontSize: CGFloat = 11
-    static let usesTwoColumnCard = true
-    static let cardColumnSpacing: CGFloat = 20
-    static let dividerWidth: CGFloat = 1
-    static let leftColumnRatio: CGFloat = 0.46
-    static let rightColumnRatio: CGFloat = 0.54
-    static let leftColumnMinWidth: CGFloat = 276
-    static let subtaskColumnMinWidth: CGFloat = 280
-    static let minimumTwoColumnWidth = max(
-        leftColumnMinWidth / leftColumnRatio,
-        subtaskColumnMinWidth / rightColumnRatio
-    ) + cardColumnSpacing * 2 + dividerWidth
     static let subtaskTitleFontSize: CGFloat = 12
     static let statusControlWidth: CGFloat = 240
     static let statusControlHeight: CGFloat = 32
@@ -101,8 +106,6 @@ enum FocusPoolPresentation {
     static let statusControlUsesNeutralSurface = true
     static let statusControlSeparatesMarkerAndTitle = true
     static let statusControlUsesFilledStateBackground = false
-    static let noteUsesPlainField = true
-    static let noteUsesMultilineEditor = true
     static let statusControlUsesLeadingAlignment = true
     static let statusControlUsesTrailingSpacer = false
     static let statusControlUsesNativePicker = false
@@ -112,22 +115,30 @@ enum FocusPoolPresentation {
     static let subtaskTitlesUseMultilineField = true
     static let subtaskTitleMaximumLineCount: Int? = nil
     static let showsStatusSymbol = false
+    static let usesLinkedSubtaskRows = true
+    static let linkedRowLeftRatio: CGFloat = 0.5
+    static let linkedRowRightRatio: CGFloat = 0.5
+    static let linkedRowDividerWidth: CGFloat = 1
+    static let linkedRowMinimumColumnWidth: CGFloat = 280
+    static let minimumLinkedRowWidth = linkedRowMinimumColumnWidth * 2 + linkedRowDividerWidth
+    static let linkedRowsShareVerticalAlignment = true
+    static let linkedRowsUseCenterConnectionMarker = true
 
     static func markerStyle(isSelected: Bool) -> FocusStateMarkerStyle {
         isSelected ? .filled : .hollow
     }
 
-    static func columnWidths(for availableWidth: CGFloat) -> FocusCardColumnWidths? {
-        guard usesTwoColumnLayout(for: availableWidth) else { return nil }
-        let columnsWidth = availableWidth - cardColumnSpacing * 2 - dividerWidth
+    static func linkedRowColumnWidths(for availableWidth: CGFloat) -> FocusCardColumnWidths? {
+        guard availableWidth.isFinite, availableWidth >= minimumLinkedRowWidth else { return nil }
+        let columnsWidth = availableWidth - linkedRowDividerWidth
         return FocusCardColumnWidths(
-            left: columnsWidth * leftColumnRatio,
-            right: columnsWidth * rightColumnRatio
+            left: columnsWidth * linkedRowLeftRatio,
+            right: columnsWidth * linkedRowRightRatio
         )
     }
 
-    static func usesTwoColumnLayout(for availableWidth: CGFloat) -> Bool {
-        availableWidth.isFinite && availableWidth >= minimumTwoColumnWidth
+    static func showsSubtaskFocusDetails(state: TaskFocusState?) -> Bool {
+        state != nil
     }
 
     static func canAddTask(isCompleted: Bool, hasFocusEntry: Bool) -> Bool {
@@ -282,7 +293,7 @@ private struct FocusStateSegmentedControl: View {
     }
 }
 
-private struct FocusEntryColumnsLayout: Layout {
+private struct FocusLinkedRowLayout: Layout {
     let spacing: CGFloat
 
     func sizeThatFits(
@@ -290,12 +301,12 @@ private struct FocusEntryColumnsLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) -> CGSize {
-        precondition(subviews.count == 3, "Focus entry layout requires left column, divider, and subtask column")
+        precondition(subviews.count == 3, "Focus linked row layout requires task, divider, and status columns")
 
         let availableWidth = resolvedWidth(for: proposal, subviews: subviews)
-        if let widths = FocusPoolPresentation.columnWidths(for: availableWidth) {
+        if let widths = FocusPoolPresentation.linkedRowColumnWidths(for: availableWidth) {
             let leftSize = subviews[0].sizeThatFits(.init(width: widths.left, height: nil))
-            let dividerSize = subviews[1].sizeThatFits(.init(width: FocusPoolPresentation.dividerWidth, height: nil))
+            let dividerSize = subviews[1].sizeThatFits(.init(width: FocusPoolPresentation.linkedRowDividerWidth, height: nil))
             let rightSize = subviews[2].sizeThatFits(.init(width: widths.right, height: nil))
 
             return CGSize(
@@ -318,7 +329,7 @@ private struct FocusEntryColumnsLayout: Layout {
         subviews: Subviews,
         cache: inout ()
     ) {
-        precondition(subviews.count == 3, "Focus entry layout requires left column, divider, and subtask column")
+        precondition(subviews.count == 3, "Focus linked row layout requires task, divider, and status columns")
 
         let availableWidth: CGFloat
         if bounds.width.isFinite, bounds.width > 0 {
@@ -326,7 +337,7 @@ private struct FocusEntryColumnsLayout: Layout {
         } else {
             availableWidth = resolvedWidth(for: proposal, subviews: subviews)
         }
-        if let widths = FocusPoolPresentation.columnWidths(for: availableWidth) {
+        if let widths = FocusPoolPresentation.linkedRowColumnWidths(for: availableWidth) {
             subviews[0].place(
                 at: bounds.origin,
                 anchor: .topLeading,
@@ -335,11 +346,11 @@ private struct FocusEntryColumnsLayout: Layout {
             subviews[1].place(
                 at: CGPoint(x: bounds.minX + widths.left + spacing, y: bounds.minY),
                 anchor: .topLeading,
-                proposal: .init(width: FocusPoolPresentation.dividerWidth, height: bounds.height)
+                proposal: .init(width: FocusPoolPresentation.linkedRowDividerWidth, height: bounds.height)
             )
             subviews[2].place(
                 at: CGPoint(
-                    x: bounds.minX + widths.left + spacing + FocusPoolPresentation.dividerWidth + spacing,
+                    x: bounds.minX + widths.left + spacing + FocusPoolPresentation.linkedRowDividerWidth + spacing,
                     y: bounds.minY
                 ),
                 anchor: .topLeading,
@@ -378,7 +389,7 @@ private struct FocusEntryColumnsLayout: Layout {
         if let fallbackWidth, fallbackWidth.isFinite, fallbackWidth > 0 {
             return fallbackWidth
         }
-        return max(FocusPoolPresentation.minimumTwoColumnWidth, idealWidth(for: subviews))
+        return max(FocusPoolPresentation.minimumLinkedRowWidth, idealWidth(for: subviews))
     }
 
     private func idealWidth(for subviews: Subviews) -> CGFloat {
@@ -526,30 +537,36 @@ private struct FocusEntryRow: View {
     @Environment(\.modelContext) private var modelContext
     let entry: FocusEntry
     let onRemove: () -> Void
-    @State private var state: TaskFocusState
-    @State private var note: String
     @State private var newSubtaskTitle = ""
     @StateObject private var reorderCoordinator = SubtaskReorderCoordinator()
     @State private var subtaskFrames: [UUID: CGRect] = [:]
     @State private var errorMessage: String?
 
-    init(entry: FocusEntry, onRemove: @escaping () -> Void) {
-        self.entry = entry
-        self.onRemove = onRemove
-        _state = State(initialValue: entry.state)
-        _note = State(initialValue: entry.note)
-    }
-
     var body: some View {
-        FocusEntryColumnsLayout(spacing: FocusPoolPresentation.cardColumnSpacing) {
-            leftColumn
+        VStack(alignment: .leading, spacing: 10) {
+            taskHeader
+            linkedRowHeaders
 
-            Rectangle()
-                .fill(TaskDesignTokens.line)
-                .frame(width: FocusPoolPresentation.dividerWidth)
-                .accessibilityHidden(true)
+            if subtasks.isEmpty {
+                Text("暂无子任务")
+                    .font(.system(size: 11))
+                    .foregroundStyle(TaskDesignTokens.quiet)
+            } else {
+                ForEach(subtasks) { subtask in
+                    linkedSubtaskRow(subtask)
+                }
+            }
 
-            subtasksColumn
+            if entry.task != nil {
+                FocusLinkedRowLayout(spacing: 0) {
+                    addSubtaskInput
+                    Rectangle()
+                        .fill(TaskDesignTokens.line)
+                        .frame(width: FocusPoolPresentation.linkedRowDividerWidth)
+                        .accessibilityHidden(true)
+                    Color.clear
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -570,7 +587,7 @@ private struct FocusEntryRow: View {
         .onDisappear { reorderCoordinator.cancel() }
     }
 
-    private var leftColumn: some View {
+    private var taskHeader: some View {
         HStack(alignment: .top, spacing: 12) {
             PriorityMarkerView(
                 coordinate: .init(uncheckedUrgency: entry.task?.urgency ?? 0, importance: entry.task?.importance ?? 0),
@@ -579,84 +596,81 @@ private struct FocusEntryRow: View {
                 isCompact: true
             )
 
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    Text(entry.task?.title ?? "已删除任务")
-                        .font(.system(size: FocusPoolPresentation.taskTitleFontSize, weight: .bold))
-                        .foregroundStyle(TaskDesignTokens.ink)
-                        .lineLimit(2)
-                    Spacer(minLength: 8)
-                    Button(action: onRemove) {
-                        Image(systemName: "trash")
-                            .font(.system(size: 11, weight: .semibold))
-                            .frame(width: 24, height: 24)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(TaskDesignTokens.quiet)
-                    .help("移出正在做")
-                    .accessibilityLabel("移出正在做")
-                }
+            Text(entry.task?.title ?? "已删除任务")
+                .font(.system(size: FocusPoolPresentation.taskTitleFontSize, weight: .bold))
+                .foregroundStyle(TaskDesignTokens.ink)
+                .lineLimit(2)
 
-                FocusStateSegmentedControl(selection: $state)
-                    .onChange(of: state) { _, _ in
-                        persist()
-                    }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                TextEditor(text: $note)
-                    .font(.system(size: 12))
-                    .textFieldStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .taskSubtleScrollIndicators()
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .frame(minHeight: 78, maxHeight: 140, alignment: .topLeading)
-                    .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
-                            .stroke(TaskDesignTokens.line, lineWidth: 1)
-                    )
-                    .onChange(of: note) { _, _ in
-                        persist()
-                    }
-                    .accessibilityLabel("正在做备注")
+            Spacer(minLength: 8)
+            Button(action: onRemove) {
+                Image(systemName: "trash")
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 24, height: 24)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
+            .foregroundStyle(TaskDesignTokens.quiet)
+            .help("移出正在做")
+            .accessibilityLabel("移出正在做")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var subtasksColumn: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text("未完成子任务")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(TaskDesignTokens.quiet)
-                Text("\(subtasks.count)")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(TaskDesignTokens.quiet)
-                Spacer(minLength: 0)
-            }
-
-            if subtasks.isEmpty {
-                Text("暂无子任务")
-                    .font(.system(size: 11))
-                    .foregroundStyle(TaskDesignTokens.quiet)
-            } else {
-                ForEach(subtasks) { subtask in
-                    subtaskRow(subtask)
-                }
-            }
-
-            if entry.task != nil {
-                addSubtaskInput
-            }
+    private var linkedRowHeaders: some View {
+        FocusLinkedRowLayout(spacing: 0) {
+            Text("任务与子任务 · \(subtasks.count)")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(TaskDesignTokens.quiet)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Rectangle()
+                .fill(TaskDesignTokens.line)
+                .frame(width: FocusPoolPresentation.linkedRowDividerWidth)
+                .accessibilityHidden(true)
+            Text("状态与说明")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(TaskDesignTokens.quiet)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 10)
         }
-        .frame(minWidth: FocusPoolPresentation.subtaskColumnMinWidth, maxWidth: .infinity, alignment: .leading)
-        .animation(.easeOut(duration: SubtaskReorderPresentation.reorderDuration), value: subtasks)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func subtaskRow(_ subtask: FocusSubtaskItem) -> some View {
+    private func linkedSubtaskRow(_ subtask: FocusSubtaskItem) -> some View {
+        FocusLinkedRowLayout(spacing: 0) {
+            subtaskContent(subtask)
+            FocusConnectionDivider(state: subtask.focusState)
+            statusDetails(for: subtask)
+        }
+        .padding(.vertical, 4)
+        .background(linkedRowBackground(for: subtask.focusState))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(TaskDesignTokens.line.opacity(0.65))
+                .frame(height: 1)
+        }
+        .padding(.leading, 2)
+        .padding(.trailing, 10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func statusDetails(for subtask: FocusSubtaskItem) -> some View {
+        if let persistedSubtask = entry.task?.subtasks.first(where: { $0.id == subtask.id }) {
+            FocusSubtaskStatusDetails(
+                subtask: persistedSubtask,
+                onFailure: { errorMessage = $0.localizedDescription }
+            )
+        } else {
+            Color.clear
+        }
+    }
+
+    private func linkedRowBackground(for state: TaskFocusState?) -> Color {
+        FocusPoolPresentation.showsSubtaskFocusDetails(state: state)
+            ? TaskDesignTokens.acid.opacity(0.09)
+            : .clear
+    }
+
+    private func subtaskContent(_ subtask: FocusSubtaskItem) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Button {
                 toggleSubtaskCompletion(subtask.id, from: .checkbox)
@@ -745,7 +759,13 @@ private struct FocusEntryRow: View {
     private var subtasks: [FocusSubtaskItem] {
         FocusPoolPresentation.subtasks(
             from: entry.task?.subtasks.sorted { $0.order < $1.order }.map {
-                FocusSubtaskItem(id: $0.id, title: $0.title, isCompleted: $0.isCompleted)
+                FocusSubtaskItem(
+                    id: $0.id,
+                    title: $0.title,
+                    isCompleted: $0.isCompleted,
+                    focusState: $0.focusState,
+                    focusNote: $0.focusNote
+                )
             } ?? []
         )
     }
@@ -840,12 +860,118 @@ private struct FocusEntryRow: View {
         }
     }
 
-    private func persist() {
-        guard let task = entry.task else { return }
+}
+
+private struct FocusConnectionDivider: View {
+    let state: TaskFocusState?
+
+    var body: some View {
+        Rectangle()
+            .fill(TaskDesignTokens.line)
+            .frame(width: FocusPoolPresentation.linkedRowDividerWidth)
+            .overlay {
+                Circle()
+                    .fill(markerColor)
+                    .frame(width: 8, height: 8)
+                    .overlay(Circle().stroke(TaskDesignTokens.raised, lineWidth: 2))
+            }
+            .accessibilityHidden(true)
+    }
+
+    private var markerColor: Color {
+        guard let state else { return TaskDesignTokens.quiet.opacity(0.55) }
+        return FocusStatePresentation.selectionColor(for: state)
+    }
+}
+
+private struct FocusSubtaskStatusDetails: View {
+    @Environment(\.modelContext) private var modelContext
+    let subtask: Subtask
+    let onFailure: (Error) -> Void
+    @State private var state: TaskFocusState?
+    @State private var note: String
+    @State private var showsStartAffordance = false
+
+    init(subtask: Subtask, onFailure: @escaping (Error) -> Void) {
+        self.subtask = subtask
+        self.onFailure = onFailure
+        _state = State(initialValue: subtask.focusState)
+        _note = State(initialValue: subtask.focusNote ?? "")
+    }
+
+    var body: some View {
+        Group {
+            if let state {
+                VStack(alignment: .leading, spacing: 6) {
+                    FocusStateSegmentedControl(selection: stateBinding)
+                    TextEditor(text: $note)
+                        .font(.system(size: 12))
+                        .textFieldStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .taskSubtleScrollIndicators()
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .frame(minHeight: 44, maxHeight: 96, alignment: .topLeading)
+                        .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
+                                .stroke(TaskDesignTokens.line, lineWidth: 1)
+                        )
+                        .onChange(of: note) { _, _ in persist(state: state) }
+                        .accessibilityLabel("子任务备注：\(subtask.title)")
+                }
+                .padding(.leading, 10)
+                .padding(.trailing, 2)
+            } else {
+                Button {
+                    start()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(TaskDesignTokens.quiet)
+                        .opacity(showsStartAffordance ? 1 : 0)
+                        .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                        .padding(.leading, 10)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .onHover { showsStartAffordance = $0 }
+                .help("开始处理此子任务")
+                .accessibilityLabel("开始处理子任务：\(subtask.title)")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onChange(of: subtask.focusState) { _, value in
+            state = value
+            note = subtask.focusNote ?? ""
+        }
+    }
+
+    private var stateBinding: Binding<TaskFocusState> {
+        Binding(
+            get: { state ?? .focused },
+            set: { newValue in
+                state = newValue
+                persist(state: newValue)
+            }
+        )
+    }
+
+    private func start() {
         do {
-            _ = try FocusRepository(context: modelContext).upsert(task: task, state: state, note: note)
+            try FocusRepository(context: modelContext).start(subtask)
+            state = subtask.focusState
+            note = subtask.focusNote ?? ""
         } catch {
-            errorMessage = error.localizedDescription
+            onFailure(error)
+        }
+    }
+
+    private func persist(state: TaskFocusState) {
+        do {
+            try FocusRepository(context: modelContext).update(subtask, state: state, note: note)
+        } catch {
+            onFailure(error)
         }
     }
 }
