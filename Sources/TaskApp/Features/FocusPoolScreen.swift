@@ -104,6 +104,7 @@ enum FocusPoolPresentation {
     static let linkedRowMinimumColumnWidth: CGFloat = 280
     static let minimumLinkedRowWidth = linkedRowMinimumColumnWidth * 2 + linkedRowDividerWidth
     static let linkedRowsShareVerticalAlignment = true
+    static let linkedRowsCenterContentVertically = true
     static let linkedRowsUseCenterConnectionMarker = true
 
     static func linkedRowColumnWidths(for availableWidth: CGFloat) -> FocusCardColumnWidths? {
@@ -241,21 +242,24 @@ private struct FocusLinkedRowLayout: Layout {
         }
         if let widths = FocusPoolPresentation.linkedRowColumnWidths(for: availableWidth) {
             subviews[0].place(
-                at: bounds.origin,
-                anchor: .topLeading,
+                at: CGPoint(x: bounds.minX + widths.left / 2, y: bounds.midY),
+                anchor: .center,
                 proposal: .init(width: widths.left, height: nil)
             )
             subviews[1].place(
-                at: CGPoint(x: bounds.minX + widths.left + spacing, y: bounds.minY),
-                anchor: .topLeading,
+                at: CGPoint(
+                    x: bounds.minX + widths.left + spacing + FocusPoolPresentation.linkedRowDividerWidth / 2,
+                    y: bounds.midY
+                ),
+                anchor: .center,
                 proposal: .init(width: FocusPoolPresentation.linkedRowDividerWidth, height: bounds.height)
             )
             subviews[2].place(
                 at: CGPoint(
-                    x: bounds.minX + widths.left + spacing + FocusPoolPresentation.linkedRowDividerWidth + spacing,
-                    y: bounds.minY
+                    x: bounds.minX + widths.left + spacing + FocusPoolPresentation.linkedRowDividerWidth + spacing + widths.right / 2,
+                    y: bounds.midY
                 ),
-                anchor: .topLeading,
+                anchor: .center,
                 proposal: .init(width: widths.right, height: nil)
             )
             return
@@ -573,7 +577,7 @@ private struct FocusEntryRow: View {
     }
 
     private func subtaskContent(_ subtask: FocusSubtaskItem) -> some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             Button {
                 toggleSubtaskCompletion(subtask.id, from: .checkbox)
             } label: {
@@ -583,7 +587,7 @@ private struct FocusEntryRow: View {
                     .frame(width: 18, height: 18)
             }
             .buttonStyle(.plain)
-            .frame(width: 24, height: 24, alignment: .topLeading)
+            .frame(width: 24, height: 24, alignment: .center)
             .contentShape(Rectangle())
             .help(FocusPoolPresentation.completionActionTitle(for: subtask))
             .accessibilityLabel(FocusPoolPresentation.completionAccessibilityLabel(for: subtask))

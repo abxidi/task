@@ -99,9 +99,22 @@ final class FocusPoolPresentationTests: XCTestCase {
     func testFocusCardsUseLinkedSubtaskRows() {
         XCTAssertTrue(FocusPoolPresentation.usesLinkedSubtaskRows)
         XCTAssertTrue(FocusPoolPresentation.linkedRowsShareVerticalAlignment)
+        XCTAssertTrue(FocusPoolPresentation.linkedRowsCenterContentVertically)
         XCTAssertTrue(FocusPoolPresentation.linkedRowsUseCenterConnectionMarker)
         XCTAssertTrue(FocusPoolPresentation.subtasksUseCheckboxes)
         XCTAssertTrue(FocusPoolPresentation.subtasksSupportReordering)
+    }
+
+    func testFocusSubtaskContentUsesCenteredVerticalAlignment() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+
+        XCTAssertTrue(source.contains("HStack(alignment: .center, spacing: 8)"))
+        XCTAssertTrue(source.contains("anchor: .center"))
     }
 
     func testFocusSubtaskRowsUseEqualLinkedColumns() throws {

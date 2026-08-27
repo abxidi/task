@@ -420,3 +420,39 @@ swift test --filter FocusPoolPresentationTests
 ```
 
 预期：所有正在进行展示契约通过。
+
+### Task 7: 让任务列表文字在关联行内垂直居中
+
+**Files:**
+- Modify: `Sources/TaskApp/Features/FocusPoolScreen.swift`
+- Modify: `Tests/TaskAppTests/FocusPoolPresentationTests.swift`
+- Modify: `docs/superpowers/specs/2026-08-27-focus-subtask-status-design.md`
+- Modify: `docs/ui/task-macos-ui-spec.md`
+
+- [x] **Step 1: 写入失败布局契约测试**
+
+在 `FocusPoolPresentationTests` 断言关联行启用垂直居中，并检查 `FocusPoolScreen.swift` 使用 `.center` 的行内容和 `anchor: .center` 的自定义布局放置。
+
+- [x] **Step 2: 验证 RED**
+
+运行：
+
+```bash
+swift test --filter FocusPoolPresentationTests
+```
+
+预期：编译失败，因为垂直居中契约尚不存在。
+
+- [x] **Step 3: 实现共享行垂直居中**
+
+将自定义关联布局的左右子视图和中线节点按 `bounds.midY` 使用 `.center` 锚点放置，并将左侧子任务内容从 `.top` 改为 `.center`，让多行任务文字在整行高度中居中。
+
+- [x] **Step 4: 验证 GREEN**
+
+运行：
+
+```bash
+swift test --filter FocusPoolPresentationTests
+```
+
+预期：关联行展示契约全部通过。
