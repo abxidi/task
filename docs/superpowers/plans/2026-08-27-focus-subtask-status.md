@@ -384,3 +384,39 @@ codesign --verify --deep --strict dist/Task.app
 ```
 
 提交状态与备注单行下拉改动及对应规范更新。
+
+### Task 6: 收紧状态下拉与备注的横向间距
+
+**Files:**
+- Modify: `Sources/TaskApp/Features/FocusPoolScreen.swift`
+- Modify: `Tests/TaskAppTests/FocusPoolPresentationTests.swift`
+- Modify: `docs/superpowers/specs/2026-08-27-focus-subtask-status-design.md`
+- Modify: `docs/ui/task-macos-ui-spec.md`
+
+- [x] **Step 1: 写入失败紧凑布局契约测试**
+
+在 `FocusPoolPresentationTests` 将下拉布局宽度断言设为 `80 pt`，并增加状态与备注的 `4 pt` 间距断言。
+
+- [x] **Step 2: 验证 RED**
+
+运行：
+
+```bash
+swift test --filter FocusPoolPresentationTests
+```
+
+预期：编译失败，因为紧凑间距契约尚不存在。
+
+- [x] **Step 3: 实现紧凑单行布局**
+
+将状态菜单的布局槽位由 `108 pt` 收至 `80 pt`，将状态与备注的 `HStack` 间距收至 `4 pt`，并明确让备注字段占满余下可用宽度。
+
+- [x] **Step 4: 验证 GREEN**
+
+运行：
+
+```bash
+swift test --filter FocusPoolPresentationTests
+```
+
+预期：所有正在进行展示契约通过。

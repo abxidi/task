@@ -92,7 +92,8 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
         XCTAssertTrue(FocusPoolPresentation.statusNoteUsesSingleLineField)
-        XCTAssertEqual(FocusPoolPresentation.statusPickerWidth, 108)
+        XCTAssertEqual(FocusPoolPresentation.statusPickerWidth, 80)
+        XCTAssertEqual(FocusPoolPresentation.statusDetailsSpacing, 4)
     }
 
     func testFocusCardsUseLinkedSubtaskRows() {

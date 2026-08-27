@@ -86,7 +86,8 @@ enum FocusPoolPresentation {
     static let actionFontSize: CGFloat = 11
     static let taskTitleFontSize: CGFloat = 11
     static let subtaskTitleFontSize: CGFloat = 12
-    static let statusPickerWidth: CGFloat = 108
+    static let statusPickerWidth: CGFloat = 80
+    static let statusDetailsSpacing: CGFloat = 4
     static let statusDetailsUseSingleRow = true
     static let statusControlUsesNativePicker = true
     static let statusNoteUsesSingleLineField = true
@@ -803,7 +804,7 @@ private struct FocusSubtaskStatusDetails: View {
     var body: some View {
         Group {
             if let state {
-                HStack(spacing: 8) {
+                HStack(spacing: FocusPoolPresentation.statusDetailsSpacing) {
                     FocusStateMenuPicker(selection: stateBinding)
                     TextField("添加备注", text: $note)
                         .textFieldStyle(.plain)
@@ -817,6 +818,7 @@ private struct FocusSubtaskStatusDetails: View {
                         )
                         .onChange(of: note) { _, _ in persist(state: state) }
                         .accessibilityLabel("子任务备注：\(subtask.title)")
+                        .frame(maxWidth: .infinity)
                 }
                 .padding(.leading, 10)
                 .padding(.trailing, 2)
