@@ -22,11 +22,6 @@ enum FocusStateColorToken: String, Hashable {
     }
 }
 
-enum FocusStateMarkerStyle: Equatable {
-    case filled
-    case hollow
-}
-
 enum FocusStatePresentation {
     static func title(for state: TaskFocusState) -> String {
         switch state {
@@ -91,24 +86,10 @@ enum FocusPoolPresentation {
     static let actionFontSize: CGFloat = 11
     static let taskTitleFontSize: CGFloat = 11
     static let subtaskTitleFontSize: CGFloat = 12
-    static let statusControlWidth: CGFloat = 240
-    static let statusControlHeight: CGFloat = 32
-    static let statusSegmentWidth: CGFloat = 78
-    static let statusControlFontSize: CGFloat = 11
-    static let statusSegmentHeight: CGFloat = 28
-    static let selectedStatusMarkerSize: CGFloat = 11
-    static let unselectedStatusMarkerSize: CGFloat = 11
-    static let selectedStatusMarkerUsesDotMatrix = true
-    static let selectedStatusMarkerDotCount = 9
-    static let statusControlUsesSegmentedRail = true
-    static let statusControlPlacesTitleAfterMarker = true
-    static let statusControlUsesUniformMarkerSize = true
-    static let statusControlUsesNeutralSurface = true
-    static let statusControlSeparatesMarkerAndTitle = true
-    static let statusControlUsesFilledStateBackground = false
-    static let statusControlUsesLeadingAlignment = true
-    static let statusControlUsesTrailingSpacer = false
-    static let statusControlUsesNativePicker = false
+    static let statusPickerWidth: CGFloat = 108
+    static let statusDetailsUseSingleRow = true
+    static let statusControlUsesNativePicker = true
+    static let statusNoteUsesSingleLineField = true
     static let subtasksUseCheckboxes = true
     static let subtasksSupportReordering = true
     static let subtasksShowInsertionIndicator = true
@@ -123,10 +104,6 @@ enum FocusPoolPresentation {
     static let minimumLinkedRowWidth = linkedRowMinimumColumnWidth * 2 + linkedRowDividerWidth
     static let linkedRowsShareVerticalAlignment = true
     static let linkedRowsUseCenterConnectionMarker = true
-
-    static func markerStyle(isSelected: Bool) -> FocusStateMarkerStyle {
-        isSelected ? .filled : .hollow
-    }
 
     static func linkedRowColumnWidths(for availableWidth: CGFloat) -> FocusCardColumnWidths? {
         guard availableWidth.isFinite, availableWidth >= minimumLinkedRowWidth else { return nil }
@@ -194,102 +171,26 @@ enum FocusPoolPresentation {
     }
 }
 
-private struct FocusStateSegmentedControl: View {
+private struct FocusStateMenuPicker: View {
     @Binding var selection: TaskFocusState
 
     var body: some View {
-        HStack(spacing: 1) {
+        Picker("", selection: $selection) {
             ForEach(TaskFocusState.allCases, id: \.self) { option in
-                segment(for: option)
-            }
-        }
-        .padding(2)
-        .frame(
-            width: FocusPoolPresentation.statusControlWidth,
-            height: FocusPoolPresentation.statusControlHeight,
-            alignment: .leading
-        )
-        .background(
-            TaskDesignTokens.settingsPanel,
-            in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
-                .stroke(TaskDesignTokens.line, lineWidth: 1)
-        )
-    }
-
-    private func segment(for option: TaskFocusState) -> some View {
-        let title = FocusStatePresentation.title(for: option)
-        let isSelected = selection == option
-
-        return Button {
-            selection = option
-        } label: {
-            segmentLabel(title: title, state: option, isSelected: isSelected)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("当前状态：\(title)")
-        .accessibilityValue(isSelected ? "已选中" : "未选中")
-    }
-
-    private func segmentLabel(title: String, state: TaskFocusState, isSelected: Bool) -> some View {
-        HStack(spacing: 5) {
-            statusMarker(for: state, isSelected: isSelected)
-            Text(title)
-                .font(.system(size: FocusPoolPresentation.statusControlFontSize, weight: .semibold))
-                .foregroundStyle(isSelected ? TaskDesignTokens.ink : TaskDesignTokens.muted)
-        }
-        .frame(
-            width: FocusPoolPresentation.statusSegmentWidth,
-            height: FocusPoolPresentation.statusSegmentHeight
-        )
-        .background {
-            if isSelected {
-                RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)
-                    .fill(TaskDesignTokens.raised)
-                    .shadow(color: Color.black.opacity(0.06), radius: 2, y: 1)
-            }
-        }
-        .contentShape(Rectangle())
-    }
-
-    @ViewBuilder
-    private func statusMarker(for state: TaskFocusState, isSelected: Bool) -> some View {
-        let color = FocusStatePresentation.selectionColor(for: state)
-        if FocusPoolPresentation.markerStyle(isSelected: isSelected) == .filled {
-            ZStack {
-                Circle()
-                    .fill(color)
-                signalLensDotMatrix
-            }
-            .frame(
-                width: FocusPoolPresentation.selectedStatusMarkerSize,
-                height: FocusPoolPresentation.selectedStatusMarkerSize
-            )
-        } else {
-            Circle()
-                .stroke(color, lineWidth: 1.5)
-                .frame(
-                    width: FocusPoolPresentation.unselectedStatusMarkerSize,
-                    height: FocusPoolPresentation.unselectedStatusMarkerSize
-                )
-        }
-    }
-
-    private var signalLensDotMatrix: some View {
-        VStack(spacing: 0.9) {
-            ForEach(0..<3, id: \.self) { _ in
-                HStack(spacing: 0.9) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        Circle()
-                            .fill(Color.white.opacity(0.52))
-                            .frame(width: 1.2, height: 1.2)
-                    }
+                Label {
+                    Text(FocusStatePresentation.title(for: option))
+                } icon: {
+                    Circle()
+                        .fill(FocusStatePresentation.selectionColor(for: option))
                 }
+                .tag(option)
             }
         }
-        .accessibilityHidden(true)
+        .pickerStyle(.menu)
+        .labelsHidden()
+        .frame(width: FocusPoolPresentation.statusPickerWidth, alignment: .leading)
+        .accessibilityLabel("子任务状态")
+        .accessibilityValue(FocusStatePresentation.title(for: selection))
     }
 }
 
@@ -902,16 +803,13 @@ private struct FocusSubtaskStatusDetails: View {
     var body: some View {
         Group {
             if let state {
-                VStack(alignment: .leading, spacing: 6) {
-                    FocusStateSegmentedControl(selection: stateBinding)
-                    TextEditor(text: $note)
-                        .font(.system(size: 12))
+                HStack(spacing: 8) {
+                    FocusStateMenuPicker(selection: stateBinding)
+                    TextField("添加备注", text: $note)
                         .textFieldStyle(.plain)
-                        .scrollContentBackground(.hidden)
-                        .taskSubtleScrollIndicators()
+                        .font(.system(size: 12))
                         .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .frame(minHeight: 44, maxHeight: 96, alignment: .topLeading)
+                        .frame(minHeight: 30)
                         .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius))
                         .overlay(
                             RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)

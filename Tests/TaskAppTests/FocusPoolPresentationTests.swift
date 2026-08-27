@@ -88,32 +88,11 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertEqual(FocusPoolPresentation.subtaskTitleFontSize, 12)
     }
 
-    func testFocusStatusControlUsesCompactSegmentedRailWithSeparateMarkers() {
-        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)
-        XCTAssertEqual(FocusPoolPresentation.statusControlHeight, 32)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentHeight, 28)
-        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerSize, 11)
-        XCTAssertEqual(FocusPoolPresentation.unselectedStatusMarkerSize, 11)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesNeutralSurface)
-        XCTAssertTrue(FocusPoolPresentation.statusControlSeparatesMarkerAndTitle)
-        XCTAssertTrue(FocusPoolPresentation.statusControlPlacesTitleAfterMarker)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesSegmentedRail)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesUniformMarkerSize)
-        XCTAssertTrue(FocusPoolPresentation.selectedStatusMarkerUsesDotMatrix)
-        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerDotCount, 9)
-        XCTAssertFalse(FocusPoolPresentation.statusControlUsesFilledStateBackground)
-    }
-
-    func testFocusStatusMarkerFillsOnlyTheSelectedState() {
-        XCTAssertEqual(
-            FocusPoolPresentation.markerStyle(isSelected: true),
-            .filled
-        )
-        XCTAssertEqual(
-            FocusPoolPresentation.markerStyle(isSelected: false),
-            .hollow
-        )
+    func testFocusStatusAndNoteUseASingleRowWithNativeDropdown() {
+        XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
+        XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
+        XCTAssertTrue(FocusPoolPresentation.statusNoteUsesSingleLineField)
+        XCTAssertEqual(FocusPoolPresentation.statusPickerWidth, 108)
     }
 
     func testFocusCardsUseLinkedSubtaskRows() {
@@ -170,11 +149,10 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(FocusPoolPresentation.allowsSubtaskCompletion(from: .title))
     }
 
-    func testStatusControlAlignsWithTheNoteField() {
-        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesLeadingAlignment)
-        XCTAssertFalse(FocusPoolPresentation.statusControlUsesTrailingSpacer)
-        XCTAssertFalse(FocusPoolPresentation.statusControlUsesNativePicker)
+    func testStatusDropdownRetainsTheApprovedStateColors() {
+        XCTAssertEqual(
+            TaskFocusState.allCases.map(FocusStatePresentation.selectionColorToken).map(\.rawValue),
+            ["green", "yellow", "red"]
+        )
     }
 }

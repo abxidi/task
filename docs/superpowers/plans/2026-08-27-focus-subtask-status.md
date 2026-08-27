@@ -335,3 +335,52 @@ git commit -m "docs: record subtask focus status behavior"
 - [ ] **Step 5: 交给用户进行真实 macOS 检查**
 
 请用户打开 `dist/Task.app`，在默认和最小窗口宽度、深色模式及 VoiceOver 下验证：左/右列等宽并按行关联；状态与备注只跟随开始处理的子任务；未开始项为空；完成子任务或完成任务后不会留下状态/备注。
+
+### Task 5: 将状态与备注压缩为单行下拉输入
+
+**Files:**
+- Modify: `Sources/TaskApp/Features/FocusPoolScreen.swift`
+- Modify: `Tests/TaskAppTests/FocusPoolPresentationTests.swift`
+- Modify: `docs/superpowers/specs/2026-08-27-focus-subtask-status-design.md`
+- Modify: `docs/ui/task-macos-ui-spec.md`
+
+- [x] **Step 1: 写入失败展示契约测试**
+
+在 `FocusPoolPresentationTests` 断言已开始子任务使用单行状态/备注布局、原生菜单式 Picker、单行备注字段，以及 `108 pt` 的状态下拉宽度。
+
+- [x] **Step 2: 验证 RED**
+
+运行：
+
+```bash
+swift test --filter FocusPoolPresentationTests
+```
+
+预期：编译失败，因为单行下拉和备注契约尚不存在。
+
+- [x] **Step 3: 实现原生下拉与单行备注**
+
+移除三段状态轨道，新增 `FocusStateMenuPicker`。已开始子任务使用单个 `HStack`，依次放置 `108 pt` 的菜单 Picker 和剩余宽度内的 `TextField`；Picker 选项保留“专注 / 等待 / 阻塞”的语义色，状态和备注继续通过 `FocusRepository.update` 保存。
+
+- [x] **Step 4: 验证 GREEN**
+
+运行：
+
+```bash
+swift test --filter FocusPoolPresentationTests
+```
+
+预期：展示契约测试通过。
+
+- [x] **Step 5: 运行完整质量门槛并提交**
+
+运行：
+
+```bash
+swift test
+swift build -c release
+./scripts/package_app.sh
+codesign --verify --deep --strict dist/Task.app
+```
+
+提交状态与备注单行下拉改动及对应规范更新。
