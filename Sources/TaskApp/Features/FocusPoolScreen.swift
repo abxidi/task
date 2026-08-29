@@ -538,6 +538,8 @@ private struct FocusEntryRow: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.leading, 10)
         }
+        .padding(.leading, 2)
+        .padding(.trailing, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 

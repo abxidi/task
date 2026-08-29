@@ -131,6 +131,22 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(source.contains("Text(\"暂无子任务\")"))
     }
 
+    func testFocusLinkedRowHeadersUseTheSameHorizontalInsetsAsSubtaskRows() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+        let headerSource = try XCTUnwrap(
+            source.components(separatedBy: "private var linkedRowHeaders: some View").last?
+                .components(separatedBy: "private func linkedSubtaskRow").first
+        )
+
+        XCTAssertTrue(headerSource.contains(".padding(.leading, 2)"))
+        XCTAssertTrue(headerSource.contains(".padding(.trailing, 10)"))
+    }
+
     func testFocusStatusAndNoteUseASingleRowWithNativeDropdown() {
         XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
