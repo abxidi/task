@@ -90,7 +90,8 @@ enum FocusPoolPresentation {
     static let statusDetailsSpacing: CGFloat = 4
     static let statusDetailsUseSingleRow = true
     static let statusControlUsesNativePicker = true
-    static let statusNoteUsesSingleLineField = true
+    static let statusNoteUsesMultilineField = true
+    static let statusNoteMaximumLineCount = 5
     static let subtasksUseCheckboxes = true
     static let subtasksSupportReordering = true
     static let subtasksShowInsertionIndicator = true
@@ -810,11 +811,13 @@ private struct FocusSubtaskStatusDetails: View {
             if let state {
                 HStack(spacing: FocusPoolPresentation.statusDetailsSpacing) {
                     FocusStateMenuPicker(selection: stateBinding)
-                    TextField("添加备注", text: $note)
+                    TextField("添加备注", text: $note, axis: .vertical)
                         .textFieldStyle(.plain)
                         .font(.system(size: 12))
                         .padding(.horizontal, 8)
                         .frame(minHeight: 30)
+                        .lineLimit(1...FocusPoolPresentation.statusNoteMaximumLineCount)
+                        .fixedSize(horizontal: false, vertical: true)
                         .background(TaskDesignTokens.raised, in: RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius))
                         .overlay(
                             RoundedRectangle(cornerRadius: TaskDesignTokens.controlRadius)

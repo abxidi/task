@@ -91,9 +91,22 @@ final class FocusPoolPresentationTests: XCTestCase {
     func testFocusStatusAndNoteUseASingleRowWithNativeDropdown() {
         XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
-        XCTAssertTrue(FocusPoolPresentation.statusNoteUsesSingleLineField)
+        XCTAssertTrue(FocusPoolPresentation.statusNoteUsesMultilineField)
         XCTAssertEqual(FocusPoolPresentation.statusPickerWidth, 80)
         XCTAssertEqual(FocusPoolPresentation.statusDetailsSpacing, 4)
+    }
+
+    func testFocusStatusNoteWrapsLongInput() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+
+        XCTAssertTrue(source.contains("TextField(\"添加备注\", text: $note, axis: .vertical)"))
+        XCTAssertTrue(source.contains(".lineLimit(1...FocusPoolPresentation.statusNoteMaximumLineCount)"))
+        XCTAssertTrue(source.contains(".fixedSize(horizontal: false, vertical: true)"))
     }
 
     func testFocusCardsUseLinkedSubtaskRows() {
