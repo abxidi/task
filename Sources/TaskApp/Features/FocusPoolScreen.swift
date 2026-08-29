@@ -87,6 +87,7 @@ enum FocusPoolPresentation {
     static let taskTitleFontSize: CGFloat = 11
     static let subtaskTitleFontSize: CGFloat = 12
     static let subtaskRowMinimumHeight: CGFloat = 36
+    static let subtaskRowSpacing: CGFloat = 0
     static let statusPickerWidth: CGFloat = 80
     static let statusDetailsSpacing: CGFloat = 4
     static let statusDetailsUseSingleRow = true
@@ -460,8 +461,10 @@ private struct FocusEntryRow: View {
                     .font(.system(size: 11))
                     .foregroundStyle(TaskDesignTokens.quiet)
             } else {
-                ForEach(subtasks) { subtask in
-                    linkedSubtaskRow(subtask)
+                VStack(alignment: .leading, spacing: FocusPoolPresentation.subtaskRowSpacing) {
+                    ForEach(subtasks) { subtask in
+                        linkedSubtaskRow(subtask)
+                    }
                 }
             }
 

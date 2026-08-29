@@ -105,6 +105,21 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertTrue(titleEditorSource.contains("alignment: .center"))
     }
 
+    func testFocusSubtaskRowsDoNotAddExtraInterRowSpacing() throws {
+        XCTAssertEqual(FocusPoolPresentation.subtaskRowSpacing, 0)
+
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+
+        XCTAssertTrue(
+            source.contains("VStack(alignment: .leading, spacing: FocusPoolPresentation.subtaskRowSpacing) {")
+        )
+    }
+
     func testFocusStatusAndNoteUseASingleRowWithNativeDropdown() {
         XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
