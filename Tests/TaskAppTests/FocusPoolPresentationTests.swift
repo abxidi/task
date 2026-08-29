@@ -88,41 +88,81 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertEqual(FocusPoolPresentation.subtaskTitleFontSize, 12)
     }
 
-    func testFocusStatusControlUsesCompactSegmentedRailWithSeparateMarkers() {
-        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)
-        XCTAssertEqual(FocusPoolPresentation.statusControlHeight, 32)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentHeight, 28)
-        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerSize, 11)
-        XCTAssertEqual(FocusPoolPresentation.unselectedStatusMarkerSize, 11)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesNeutralSurface)
-        XCTAssertTrue(FocusPoolPresentation.statusControlSeparatesMarkerAndTitle)
-        XCTAssertTrue(FocusPoolPresentation.statusControlPlacesTitleAfterMarker)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesSegmentedRail)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesUniformMarkerSize)
-        XCTAssertTrue(FocusPoolPresentation.selectedStatusMarkerUsesDotMatrix)
-        XCTAssertEqual(FocusPoolPresentation.selectedStatusMarkerDotCount, 9)
-        XCTAssertFalse(FocusPoolPresentation.statusControlUsesFilledStateBackground)
+    func testFocusStatusAndNoteUseASingleRowWithNativeDropdown() {
+        XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
+        XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
+        XCTAssertTrue(FocusPoolPresentation.statusNoteUsesMultilineField)
+        XCTAssertEqual(FocusPoolPresentation.statusPickerWidth, 80)
+        XCTAssertEqual(FocusPoolPresentation.statusDetailsSpacing, 4)
     }
 
-    func testFocusStatusMarkerFillsOnlyTheSelectedState() {
-        XCTAssertEqual(
-            FocusPoolPresentation.markerStyle(isSelected: true),
-            .filled
-        )
-        XCTAssertEqual(
-            FocusPoolPresentation.markerStyle(isSelected: false),
-            .hollow
-        )
+    func testFocusStatusNoteWrapsLongInput() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+
+        XCTAssertTrue(source.contains("TextField(\"添加备注\", text: $note, axis: .vertical)"))
+        XCTAssertTrue(source.contains(".lineLimit(1...FocusPoolPresentation.statusNoteMaximumLineCount)"))
+        XCTAssertTrue(source.contains(".fixedSize(horizontal: false, vertical: true)"))
     }
 
-    func testFocusCardsUseTwoColumnsAndPlainNoteField() {
-        XCTAssertTrue(FocusPoolPresentation.usesTwoColumnCard)
-        XCTAssertEqual(FocusPoolPresentation.subtaskColumnMinWidth, 280)
-        XCTAssertTrue(FocusPoolPresentation.noteUsesPlainField)
-        XCTAssertTrue(FocusPoolPresentation.noteUsesMultilineEditor)
+    func testFocusCardsUseLinkedSubtaskRows() {
+        XCTAssertTrue(FocusPoolPresentation.usesLinkedSubtaskRows)
+        XCTAssertTrue(FocusPoolPresentation.linkedRowsShareVerticalAlignment)
+        XCTAssertTrue(FocusPoolPresentation.linkedRowsCenterContentVertically)
+        XCTAssertTrue(FocusPoolPresentation.linkedRowsUseCenterConnectionMarker)
         XCTAssertTrue(FocusPoolPresentation.subtasksUseCheckboxes)
         XCTAssertTrue(FocusPoolPresentation.subtasksSupportReordering)
+    }
+
+    func testFocusSubtaskContentUsesCenteredVerticalAlignment() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+
+        XCTAssertTrue(source.contains("HStack(alignment: .center, spacing: 8)"))
+        XCTAssertTrue(source.contains("anchor: .center"))
+    }
+
+    func testFocusSubtaskRowsUseEqualLinkedColumns() throws {
+        let widths = try XCTUnwrap(FocusPoolPresentation.linkedRowColumnWidths(for: 800))
+
+        XCTAssertEqual(FocusPoolPresentation.linkedRowLeftRatio, 0.5, accuracy: 0.000_1)
+        XCTAssertEqual(FocusPoolPresentation.linkedRowRightRatio, 0.5, accuracy: 0.000_1)
+        XCTAssertEqual(widths.left, widths.right, accuracy: 0.000_1)
+        XCTAssertEqual(FocusPoolPresentation.linkedRowDividerWidth, 1)
+    }
+
+    func testFocusLinkedRowsStackBelowTheTwoColumnMinimumWidth() throws {
+        let widths = try XCTUnwrap(
+            FocusPoolPresentation.linkedRowColumnWidths(
+                for: FocusPoolPresentation.minimumLinkedRowWidth
+            )
+        )
+
+        XCTAssertEqual(widths.left, FocusPoolPresentation.linkedRowMinimumColumnWidth, accuracy: 0.000_1)
+        XCTAssertEqual(widths.right, FocusPoolPresentation.linkedRowMinimumColumnWidth, accuracy: 0.000_1)
+        XCTAssertNil(
+            FocusPoolPresentation.linkedRowColumnWidths(
+                for: FocusPoolPresentation.minimumLinkedRowWidth - 1
+            )
+        )
+    }
+
+    func testFocusSubtaskStatusIsHiddenUntilStarted() {
+        XCTAssertFalse(FocusPoolPresentation.showsSubtaskFocusDetails(state: nil))
+        XCTAssertTrue(FocusPoolPresentation.showsSubtaskFocusDetails(state: .focused))
+    }
+
+    func testFocusLinkedRowWidthsRemainUnsetUntilTheCardHasFiniteWidth() {
+        XCTAssertNil(FocusPoolPresentation.linkedRowColumnWidths(for: 0))
+        XCTAssertNil(FocusPoolPresentation.linkedRowColumnWidths(for: .infinity))
     }
 
     func testFocusSubtaskReorderingUsesSystemBlueInsertionIndicator() {
@@ -136,11 +176,10 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertFalse(FocusPoolPresentation.allowsSubtaskCompletion(from: .title))
     }
 
-    func testStatusControlAlignsWithTheNoteField() {
-        XCTAssertEqual(FocusPoolPresentation.statusControlWidth, 240)
-        XCTAssertEqual(FocusPoolPresentation.statusSegmentWidth, 78)
-        XCTAssertTrue(FocusPoolPresentation.statusControlUsesLeadingAlignment)
-        XCTAssertFalse(FocusPoolPresentation.statusControlUsesTrailingSpacer)
-        XCTAssertFalse(FocusPoolPresentation.statusControlUsesNativePicker)
+    func testStatusDropdownRetainsTheApprovedStateColors() {
+        XCTAssertEqual(
+            TaskFocusState.allCases.map(FocusStatePresentation.selectionColorToken).map(\.rawValue),
+            ["green", "yellow", "red"]
+        )
     }
 }

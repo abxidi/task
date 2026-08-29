@@ -15,8 +15,8 @@ final class FocusRepositoryTests: XCTestCase {
         let entry = try repository.upsert(task: task, state: .focused, note: "先确认讲稿")
 
         XCTAssertEqual(entry.task?.id, task.id)
-        XCTAssertEqual(entry.state, .focused)
-        XCTAssertEqual(entry.note, "先确认讲稿")
+        XCTAssertEqual(entry.stateRawValue, "")
+        XCTAssertEqual(entry.note, "")
         XCTAssertFalse(task.isCompleted)
         XCTAssertNil(task.boardColumn)
     }
@@ -33,8 +33,8 @@ final class FocusRepositoryTests: XCTestCase {
 
         XCTAssertEqual(first.id, second.id)
         XCTAssertEqual(try repository.fetchEntries().count, 1)
-        XCTAssertEqual(second.state, .blocked)
-        XCTAssertEqual(second.note, "等待输入")
+        XCTAssertEqual(second.stateRawValue, "")
+        XCTAssertEqual(second.note, "")
     }
 
     func testUpdatingFocusEntryKeepsTaskWorkflowUntouched() throws {
@@ -49,26 +49,58 @@ final class FocusRepositoryTests: XCTestCase {
         _ = try repository.upsert(task: task, state: .focused, note: "初始备注")
         let entry = try repository.upsert(task: task, state: .waiting, note: "等待确认")
 
-        XCTAssertEqual(entry.state, .waiting)
-        XCTAssertEqual(entry.note, "等待确认")
+        XCTAssertEqual(entry.stateRawValue, "")
+        XCTAssertEqual(entry.note, "")
         XCTAssertTrue(task.isCompleted)
         XCTAssertEqual(task.urgency, 3)
     }
 
-    func testFocusNotePreservesLineBreaks() throws {
+    func testSubtaskFocusNotePreservesLineBreaks() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
-        let task = TaskItem(title: "多行备注")
-        container.mainContext.insert(task)
-        try container.mainContext.save()
+        let task = try TaskRepository(context: container.mainContext)
+            .saveNewTask(TaskDraft(title: "多行备注", subtasks: ["处理备注"]))
+        let subtask = try XCTUnwrap(task.subtasks.first)
 
         let note = "第一行\n第二行\n第三行"
-        let entry = try FocusRepository(context: container.mainContext)
-            .upsert(task: task, state: .focused, note: note)
+        try FocusRepository(context: container.mainContext)
+            .update(subtask, state: .focused, note: note)
 
-        XCTAssertEqual(entry.note, note)
+        XCTAssertEqual(subtask.focusNote, note)
     }
 
-    func testMigratingLegacyPausedStateWritesWaitingRawValue() throws {
+    func testStartingAndUpdatingSubtasksKeepsTheirFocusDataIndependent() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let task = try TaskRepository(context: container.mainContext)
+            .saveNewTask(TaskDraft(title: "发布", subtasks: ["回归", "确认接口"]))
+        let subtasks = task.subtasks.sorted { $0.order < $1.order }
+        let repository = FocusRepository(context: container.mainContext)
+
+        try repository.start(subtasks[0])
+        try repository.update(subtasks[0], state: .waiting, note: "等待回归结果")
+        try repository.start(subtasks[1])
+
+        XCTAssertEqual(subtasks[0].focusState, .waiting)
+        XCTAssertEqual(subtasks[0].focusNote, "等待回归结果")
+        XCTAssertEqual(subtasks[1].focusState, .focused)
+        XCTAssertEqual(subtasks[1].focusNote, "")
+        XCTAssertFalse(task.isCompleted)
+        XCTAssertNil(task.boardColumn)
+    }
+
+    func testStartingSubtaskClearsLegacyTaskLevelFocusMetadata() throws {
+        let container = try ModelContainerFactory.make(inMemory: true)
+        let task = try TaskRepository(context: container.mainContext)
+            .saveNewTask(TaskDraft(title: "发布", subtasks: ["回归"]))
+        let entry = try FocusRepository(context: container.mainContext)
+            .upsert(task: task, state: .blocked, note: "旧备注")
+
+        try FocusRepository(context: container.mainContext).start(try XCTUnwrap(task.subtasks.first))
+
+        XCTAssertEqual(entry.stateRawValue, "")
+        XCTAssertEqual(entry.note, "")
+    }
+
+    func testMigratingLegacyTaskMetadataDeletesIt() throws {
         let container = try ModelContainerFactory.make(inMemory: true)
         let task = TaskItem(title: "等待评审")
         let entry = FocusEntry(state: .focused)
@@ -83,8 +115,8 @@ final class FocusRepositoryTests: XCTestCase {
         let migratedCount = try FocusRepository(context: container.mainContext).migrateLegacyStates()
 
         XCTAssertEqual(migratedCount, 1)
-        XCTAssertEqual(entry.stateRawValue, "waiting")
-        XCTAssertEqual(entry.state, .waiting)
+        XCTAssertEqual(entry.stateRawValue, "")
+        XCTAssertEqual(entry.note, "")
         XCTAssertEqual(try FocusRepository(context: container.mainContext).migrateLegacyStates(), 0)
     }
 }

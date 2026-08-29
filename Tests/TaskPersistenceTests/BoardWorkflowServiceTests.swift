@@ -22,12 +22,16 @@ final class BoardWorkflowServiceTests: XCTestCase {
         task.project = project
         task.boardColumn = todo
         container.mainContext.insert(task)
+        _ = try FocusRepository(context: container.mainContext)
+            .upsert(task: task, state: .focused, note: "准备发布")
         let service = BoardWorkflowService(context: container.mainContext)
 
         try service.move(task, to: done, now: Date(timeIntervalSince1970: 500))
         XCTAssertTrue(task.isCompleted)
         XCTAssertEqual(task.completedAt, Date(timeIntervalSince1970: 500))
         XCTAssertEqual(task.previousBoardColumnID, todo.id)
+        XCTAssertNil(task.focusEntry)
+        XCTAssertTrue(try FocusRepository(context: container.mainContext).fetchEntries().isEmpty)
 
         try service.move(task, to: todo, now: Date(timeIntervalSince1970: 600))
         XCTAssertFalse(task.isCompleted)

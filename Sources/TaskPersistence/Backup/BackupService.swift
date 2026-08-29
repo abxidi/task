@@ -89,7 +89,10 @@ public final class BackupService: BackupServicing {
                     title: subtask.title,
                     isCompleted: subtask.isCompleted,
                     order: subtask.order,
-                    createdAt: subtask.createdAt
+                    createdAt: subtask.createdAt,
+                    focusStateRawValue: subtask.focusStateRawValue,
+                    focusNote: subtask.focusNote,
+                    focusUpdatedAt: subtask.focusUpdatedAt
                 )
             },
             attachments: attachments.compactMap { attachment in
@@ -107,8 +110,6 @@ public final class BackupService: BackupServicing {
                 return BackupFocusEntry(
                     id: entry.id,
                     taskID: taskID,
-                    stateRawValue: entry.state.rawValue,
-                    note: entry.note,
                     createdAt: entry.createdAt,
                     updatedAt: entry.updatedAt
                 )
@@ -174,6 +175,10 @@ public final class BackupService: BackupServicing {
 
         for subtask in envelope.subtasks {
             guard taskIDSet.contains(subtask.taskID) else { throw BackupError.missingRelationship }
+            if let rawValue = subtask.focusStateRawValue,
+               TaskFocusState(rawValue: rawValue) == nil {
+                throw BackupError.invalidFocusState
+            }
         }
 
         let subtaskIDSet = Set(subtaskIDs)
@@ -184,7 +189,6 @@ public final class BackupService: BackupServicing {
         var focusedTaskIDs = Set<UUID>()
         for entry in envelope.focusEntries {
             guard taskIDSet.contains(entry.taskID) else { throw BackupError.missingRelationship }
-            guard TaskFocusState(rawValue: entry.stateRawValue) != nil else { throw BackupError.invalidFocusState }
             guard focusedTaskIDs.insert(entry.taskID).inserted else { throw BackupError.duplicateFocusEntry }
         }
 
@@ -254,6 +258,9 @@ public final class BackupService: BackupServicing {
         for dto in envelope.subtasks {
             let subtask = Subtask(id: dto.id, title: dto.title, order: dto.order, createdAt: dto.createdAt)
             subtask.isCompleted = dto.isCompleted
+            subtask.focusStateRawValue = dto.focusStateRawValue
+            subtask.focusNote = dto.focusNote
+            subtask.focusUpdatedAt = dto.focusUpdatedAt
             subtask.task = tasksByID[dto.taskID]
             context.insert(subtask)
             subtasksByID[dto.id] = subtask
@@ -271,8 +278,8 @@ public final class BackupService: BackupServicing {
         }
 
         for dto in envelope.focusEntries {
-            guard let state = TaskFocusState(rawValue: dto.stateRawValue) else { continue }
-            let entry = FocusEntry(id: dto.id, state: state, note: dto.note, now: dto.createdAt)
+            let entry = FocusEntry(id: dto.id, state: .focused, note: "", now: dto.createdAt)
+            entry.stateRawValue = ""
             entry.updatedAt = dto.updatedAt
             entry.task = tasksByID[dto.taskID]
             tasksByID[dto.taskID]?.focusEntry = entry

@@ -2,7 +2,7 @@ import SwiftData
 
 public enum ModelContainerFactory {
     public static func make(inMemory: Bool = false) throws -> ModelContainer {
-        // v2 is additive only: optional startAt and new owned attachment/focus entities.
+        // v3 is additive only: optional subtask focus fields preserve existing local task data.
         // SwiftData can apply its lightweight migration without removing existing task data.
         let schema = Schema([
             TaskItem.self,
