@@ -456,11 +456,7 @@ private struct FocusEntryRow: View {
             taskHeader
             linkedRowHeaders
 
-            if subtasks.isEmpty {
-                Text("暂无子任务")
-                    .font(.system(size: 11))
-                    .foregroundStyle(TaskDesignTokens.quiet)
-            } else {
+            if !subtasks.isEmpty {
                 VStack(alignment: .leading, spacing: FocusPoolPresentation.subtaskRowSpacing) {
                     ForEach(subtasks) { subtask in
                         linkedSubtaskRow(subtask)

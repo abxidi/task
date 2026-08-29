@@ -120,6 +120,17 @@ final class FocusPoolPresentationTests: XCTestCase {
         )
     }
 
+    func testFocusPoolDoesNotDisplayAnEmptySubtaskMessage() throws {
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+
+        XCTAssertFalse(source.contains("Text(\"暂无子任务\")"))
+    }
+
     func testFocusStatusAndNoteUseASingleRowWithNativeDropdown() {
         XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
