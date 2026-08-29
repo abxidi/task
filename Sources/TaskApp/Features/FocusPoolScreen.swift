@@ -86,6 +86,7 @@ enum FocusPoolPresentation {
     static let actionFontSize: CGFloat = 11
     static let taskTitleFontSize: CGFloat = 11
     static let subtaskTitleFontSize: CGFloat = 12
+    static let subtaskRowMinimumHeight: CGFloat = 36
     static let statusPickerWidth: CGFloat = 80
     static let statusDetailsSpacing: CGFloat = 4
     static let statusDetailsUseSingleRow = true
@@ -548,6 +549,7 @@ private struct FocusEntryRow: View {
             statusDetails(for: subtask)
         }
         .padding(.vertical, 4)
+        .frame(minHeight: FocusPoolPresentation.subtaskRowMinimumHeight, alignment: .center)
         .background(linkedRowBackground(for: subtask.focusState))
         .overlay(alignment: .bottom) {
             Rectangle()
@@ -588,7 +590,7 @@ private struct FocusEntryRow: View {
                     .frame(width: 18, height: 18)
             }
             .buttonStyle(.plain)
-            .frame(width: 24, height: 24, alignment: .center)
+            .frame(width: 24, height: FocusPoolPresentation.subtaskRowMinimumHeight, alignment: .center)
             .contentShape(Rectangle())
             .help(FocusPoolPresentation.completionActionTitle(for: subtask))
             .accessibilityLabel(FocusPoolPresentation.completionAccessibilityLabel(for: subtask))
@@ -605,7 +607,7 @@ private struct FocusEntryRow: View {
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(TaskDesignTokens.quiet)
-                .frame(width: 24, height: 24)
+                .frame(width: 24, height: FocusPoolPresentation.subtaskRowMinimumHeight, alignment: .center)
                 .contentShape(Rectangle())
                 .gesture(reorderGesture(for: subtask.id))
                 .help("拖动排序")
@@ -915,7 +917,11 @@ private struct FocusSubtaskTitleEditor: View {
             .strikethrough(isCompleted)
             .lineLimit(1...)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(
+                maxWidth: .infinity,
+                minHeight: FocusPoolPresentation.subtaskRowMinimumHeight,
+                alignment: .center
+            )
             .focused($isFocused)
             .onSubmit(commit)
             .onChange(of: isFocused) { _, hasFocus in

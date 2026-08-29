@@ -88,6 +88,23 @@ final class FocusPoolPresentationTests: XCTestCase {
         XCTAssertEqual(FocusPoolPresentation.subtaskTitleFontSize, 12)
     }
 
+    func testFocusSubtaskTitleUsesAStableCenteredRowHeight() throws {
+        XCTAssertEqual(FocusPoolPresentation.subtaskRowMinimumHeight, 36)
+
+        let workspaceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let sourceURL = workspaceURL.appending(path: "Sources/TaskApp/Features/FocusPoolScreen.swift")
+        let source = try String(contentsOf: sourceURL)
+        let titleEditorSource = try XCTUnwrap(
+            source.components(separatedBy: "private struct FocusSubtaskTitleEditor: View").last
+        )
+
+        XCTAssertTrue(titleEditorSource.contains("minHeight: FocusPoolPresentation.subtaskRowMinimumHeight"))
+        XCTAssertTrue(titleEditorSource.contains("alignment: .center"))
+    }
+
     func testFocusStatusAndNoteUseASingleRowWithNativeDropdown() {
         XCTAssertTrue(FocusPoolPresentation.statusDetailsUseSingleRow)
         XCTAssertTrue(FocusPoolPresentation.statusControlUsesNativePicker)
